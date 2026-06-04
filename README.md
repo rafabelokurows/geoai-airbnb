@@ -1,6 +1,44 @@
 # GeoAI Short-Term Rental Intelligence Platform
 
-> A geospatial AI platform that helps investors, hosts, and analysts understand what drives Airbnb performance — combining geospatial analytics, machine learning, causal inference, and LLM-powered insights.
+> A geospatial AI platform that explains what drives Airbnb performance — combining geospatial feature engineering, machine learning, causal inference, and LLM-powered property analysis.
+
+---
+
+## What This Is
+
+Short-term rental markets are deeply spatial. A listing's revenue isn't just a function of its amenities or host quality — it's a function of *where it sits*: proximity to transit, density of restaurants, walkability, competition from nearby listings, and neighborhood trajectory.
+
+This platform engineers those spatial signals from raw Airbnb and OpenStreetMap data, feeds them into interpretable ML models, and surfaces actionable insights for anyone who needs to understand or act on STR market dynamics. The end product is not a price predictor — it's an intelligence layer that answers *why*, not just *what*.
+
+The full stack runs locally with zero external dependencies beyond the data files. DuckDB replaces a traditional database server. OSMnx replaces a paid POI API. SHAP replaces black-box model outputs. The architecture is intentionally minimal: every component is replaceable and every intermediate artifact is inspectable.
+
+---
+
+## Why Porto
+
+Porto is one of Europe's highest-signal STR markets for technical work:
+
+- **Scale without noise**: ~15,000 active listings — large enough for robust ML, small enough to iterate fast on a laptop
+- **Geographic diversity**: compact city with distinct neighborhoods (Ribeira waterfront, Bonfim gentrification frontier, Foz coastal premium) that stress-test spatial features
+- **Tourism pressure**: consistently ranked top-5 European city by tourism growth, making STR dynamics economically meaningful
+- **Open data quality**: InsideAirbnb maintains high-quality, regularly updated Porto snapshots — reviews, calendar, and neighborhood boundaries all included
+- **OSM coverage**: dense, well-maintained OpenStreetMap data for POI extraction — transit stops, restaurants, museums, parks all reliably present
+- **Regulatory context**: Porto has active STR regulation debates, making causal analysis of policy effects a realistic downstream application
+
+The same pipeline runs on any InsideAirbnb city by swapping the city config. Porto is the reference market.
+
+---
+
+## Who Uses This
+
+| Persona | Use case |
+|---------|----------|
+| **Property investors** | Identify undervalued micro-markets before competitors; quantify revenue uplift from specific amenities |
+| **Airbnb hosts** | Understand why nearby listings earn more; get actionable improvement signals with SHAP explanations |
+| **Real estate analysts** | Model STR revenue potential for acquisition underwriting; map opportunity gaps between predicted and actual yield |
+| **Urban researchers** | Study how tourism infrastructure, transit access, and neighborhood change affect STR markets |
+| **City planners / policy teams** | Analyze spatial concentration of STR activity; measure causal impact of regulation on supply and pricing |
+| **Applied AI / ML engineers** | Reference implementation of geospatial feature engineering, SHAP explainability, and causal inference on a real dataset |
 
 ---
 
