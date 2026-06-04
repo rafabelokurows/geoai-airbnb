@@ -1,3 +1,5 @@
+import math
+
 import polars as pl
 import pytest
 
@@ -48,9 +50,26 @@ def test_compute_poi_density_returns_correct_columns():
     result = compute_poi_density(listings, pois)
     expected_cols = {
         "listing_id", "restaurants_250m", "restaurants_500m", "bars_500m",
-        "cafes_500m", "supermarkets_1km", "attractions_1km", "museums_2km", "parks_500m"
+        "cafes_500m", "supermarkets_1km", "attractions_1km", "museums_2km", "parks_500m",
+        "amenity_density_1km", "restaurant_density",
     }
     assert expected_cols.issubset(set(result.columns))
+
+
+def test_compute_poi_density_amenity_density_and_restaurant_density():
+    listings = _make_listings([(41.14961, -8.61099)])
+    pois = _make_pois([
+        {"poi_type": "amenity", "poi_subtype": "restaurant", "lat": 41.150,  "lon": -8.611},  # ~0.11km
+        {"poi_type": "amenity", "poi_subtype": "restaurant", "lat": 41.151,  "lon": -8.612},  # ~0.17km
+        {"poi_type": "amenity", "poi_subtype": "bar",        "lat": 41.149,  "lon": -8.610},  # ~0.05km
+        {"poi_type": "leisure", "poi_subtype": "park",       "lat": 41.148,  "lon": -8.609},  # ~0.20km
+        {"poi_type": "amenity", "poi_subtype": "restaurant", "lat": 41.200,  "lon": -8.650},  # ~7km — far
+    ])
+    result = compute_poi_density(listings, pois)
+    # 2 restaurants + 1 bar + 1 park within 1km
+    assert result["amenity_density_1km"][0] == 4
+    # 2 restaurants within 500m → density = 2 / (π * 0.25)
+    assert result["restaurant_density"][0] == pytest.approx(2 / math.pi / 0.25, abs=0.01)
 
 
 def test_compute_poi_density_counts_correctly():

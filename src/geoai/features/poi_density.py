@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 
 import duckdb
@@ -40,6 +41,11 @@ _SUPERMARKET_SUBTYPES = ["supermarket"]
 _ATTRACTION_SUBTYPES = ["attraction", "gallery", "viewpoint", "museum", "theatre", "cinema"]
 _MUSEUM_SUBTYPES = ["museum"]
 _PARK_SUBTYPES = ["park", "garden"]
+_ALL_AMENITY_SUBTYPES = (
+    _RESTAURANT_SUBTYPES + _BAR_SUBTYPES + _CAFE_SUBTYPES + _SUPERMARKET_SUBTYPES
+    + _ATTRACTION_SUBTYPES + _PARK_SUBTYPES + ["pharmacy"]
+)
+_AREA_500M_KM2 = math.pi * 0.5 ** 2  # ≈ 0.785 km²
 
 
 def compute_poi_density(
@@ -53,20 +59,24 @@ def compute_poi_density(
     attractions  = pois.filter(pl.col("poi_subtype").is_in(_ATTRACTION_SUBTYPES))
     museums      = pois.filter(pl.col("poi_subtype").is_in(_MUSEUM_SUBTYPES))
     parks        = pois.filter(pl.col("poi_subtype").is_in(_PARK_SUBTYPES))
+    all_amenity  = pois.filter(pl.col("poi_subtype").is_in(_ALL_AMENITY_SUBTYPES))
 
     rows = []
     for row in listings.iter_rows(named=True):
         lat, lon = row["latitude"], row["longitude"]
+        r_500m = count_within_radius(lat, lon, restaurants, 0.5)
         rows.append({
-            "listing_id":       row["id"],
-            "restaurants_250m": count_within_radius(lat, lon, restaurants,  0.25),
-            "restaurants_500m": count_within_radius(lat, lon, restaurants,  0.5),
-            "bars_500m":        count_within_radius(lat, lon, bars,         0.5),
-            "cafes_500m":       count_within_radius(lat, lon, cafes,        0.5),
-            "supermarkets_1km": count_within_radius(lat, lon, supermarkets, 1.0),
-            "attractions_1km":  count_within_radius(lat, lon, attractions,  1.0),
-            "museums_2km":      count_within_radius(lat, lon, museums,      2.0),
-            "parks_500m":       count_within_radius(lat, lon, parks,        0.5),
+            "listing_id":           row["id"],
+            "restaurants_250m":     count_within_radius(lat, lon, restaurants,  0.25),
+            "restaurants_500m":     r_500m,
+            "bars_500m":            count_within_radius(lat, lon, bars,         0.5),
+            "cafes_500m":           count_within_radius(lat, lon, cafes,        0.5),
+            "supermarkets_1km":     count_within_radius(lat, lon, supermarkets, 1.0),
+            "attractions_1km":      count_within_radius(lat, lon, attractions,  1.0),
+            "museums_2km":          count_within_radius(lat, lon, museums,      2.0),
+            "parks_500m":           count_within_radius(lat, lon, parks,        0.5),
+            "amenity_density_1km":  count_within_radius(lat, lon, all_amenity,  1.0),
+            "restaurant_density":   round(r_500m / _AREA_500M_KM2, 4),
         })
     return pl.DataFrame(rows)
 

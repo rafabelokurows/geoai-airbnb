@@ -19,7 +19,16 @@
       "PowerShell(if \\(-not $?\\) { \"tests dir missing or empty\" })",
       "Bash(rtk find *)",
       "PowerShell(python3.13 --version 2>&1)",
-      "PowerShell(py -0p)"
+      "PowerShell(py -0p)",
+      "mcp__plugin_context-mode_context-mode__ctx_search",
+      "PowerShell(C:\\\\Users\\\\RafaelBelokurows\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe -c \"import polars; import numpy; import duckdb; print\\('OK'\\)\")",
+      "Bash(dir src\\\\geoai\\\\features)",
+      "Bash(Get-ChildItem \"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\src\\\\geoai\\\\features\")",
+      "Bash(C:\\\\Users\\\\RafaelBelokurows\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe -m pytest tests/test_accessibility.py -v)",
+      "Bash(C:\\\\Users\\\\RafaelBelokurows\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe -m pytest tests/test_competition.py -v)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\RafaelBelokurows\\Desktop\\geoai_airbnb\\src\\geoai"
     ]
   }
 }

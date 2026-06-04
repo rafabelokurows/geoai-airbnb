@@ -4,7 +4,7 @@ import duckdb
 import numpy as np
 import polars as pl
 
-from geoai.config import DB_PATH, PORTO_CENTER_LAT, PORTO_CENTER_LON, PORTO_LANDMARKS
+from geoai.config import DB_PATH, PORTO_CENTER_LAT, PORTO_CENTER_LON, PORTO_LANDMARKS, PORTO_AIRPORT
 from geoai.database.warehouse import init_warehouse
 
 
@@ -66,6 +66,12 @@ def compute_accessibility(
     for name, (lat, lon) in PORTO_LANDMARKS.items():
         dists = haversine_km(lats, lons, lat, lon)
         new_cols.append(pl.Series(f"dist_{name}_km", dists.tolist()))
+
+    airport_dists = haversine_km(lats, lons, PORTO_AIRPORT[0], PORTO_AIRPORT[1])
+    # road distance ≈ 1.3× straight-line, average speed 40 km/h
+    travel_times = (airport_dists * 1.3 / 40.0 * 60.0).tolist()
+    new_cols.append(pl.Series("dist_airport_km", airport_dists.tolist()))
+    new_cols.append(pl.Series("travel_time_airport_min", travel_times))
 
     return listings.select("id").with_columns(new_cols)
 

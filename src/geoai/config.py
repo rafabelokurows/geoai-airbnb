@@ -35,6 +35,9 @@ PORTO_LANDMARKS = {
     "jardins_cristal": (41.14600, -8.62620),
 }
 
+# Francisco Sá Carneiro Airport
+PORTO_AIRPORT = (41.2370, -8.6699)
+
 OSM_POI_TAGS = {
     "amenity": [
         "restaurant", "bar", "cafe", "pub", "fast_food",

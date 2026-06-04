@@ -43,6 +43,7 @@ def test_compute_accessibility_returns_all_columns():
         "dist_nearest_supermarket_km",
         "dist_livraria_lello_km", "dist_torre_clerigos_km", "dist_ribeira_km",
         "dist_ponte_luis_km", "dist_mercado_bolhao_km", "dist_jardins_cristal_km",
+        "dist_airport_km", "travel_time_airport_min",
     }
     assert expected.issubset(set(result.columns))
 
@@ -78,6 +79,20 @@ def test_compute_accessibility_landmark_distances_reasonable():
     for col in ["dist_livraria_lello_km", "dist_torre_clerigos_km", "dist_ribeira_km",
                 "dist_ponte_luis_km", "dist_mercado_bolhao_km", "dist_jardins_cristal_km"]:
         assert result[col][0] < 3.0, f"{col} unexpectedly large"
+
+
+def test_compute_accessibility_airport_distance():
+    listings = pl.DataFrame({
+        "id": [1], "latitude": [41.14961], "longitude": [-8.61099]
+    })
+    pois = pl.DataFrame(schema={"osm_id": pl.Utf8, "poi_type": pl.Utf8, "poi_subtype": pl.Utf8, "latitude": pl.Float64, "longitude": pl.Float64})
+    result = compute_accessibility(listings, pois)
+    # Porto center to airport ~11km straight-line
+    assert result["dist_airport_km"][0] == pytest.approx(11.0, abs=3.0)
+    # travel time = dist * 1.3 / 40 * 60 — must be positive and reasonable
+    assert result["travel_time_airport_min"][0] == pytest.approx(
+        result["dist_airport_km"][0] * 1.3 / 40.0 * 60.0, abs=0.01
+    )
 
 
 def test_compute_accessibility_supermarket_null_when_no_pois():
