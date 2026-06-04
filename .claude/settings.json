@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"c:\\\\Users\\\\RafaelBelokurows\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -m pytest \"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\tests\\\\test_config.py\" -v 2>&1)",
+      "Bash(git init *)",
+      "Bash(rtk git *)",
+      "Bash(python -c \"from geoai.config import DB_PATH, AIRBNB_PORTO_URL, OSM_CITY; print\\('Import successful'\\)\")",
+      "Bash(rtk pip *)",
+      "Bash(python -c \"from geoai.config import DB_PATH, AIRBNB_PORTO_URL, OSM_CITY; print\\('✓ Imports work'\\); print\\(f'DB_PATH type: {type\\(DB_PATH\\)}'\\); print\\(f'AIRBNB_PORTO_URL type: {type\\(AIRBNB_PORTO_URL\\)}'\\); print\\(f'OSM_CITY type: {type\\(OSM_CITY\\)}'\\)\")",
+      "Bash(PYTHONPATH=\"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\src\" python -c \"from geoai.config import DB_PATH, AIRBNB_PORTO_URL, OSM_CITY; print\\('✓ Imports work'\\)\")",
+      "Bash(PYTHONPATH=\"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\src\" python -c \"from geoai.config import DB_PATH, AIRBNB_PORTO_URL, OSM_CITY; print\\('OK'\\)\")",
+      "Bash(rtk pytest *)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\tests\\\\test_config.py\" -Force)",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute"
+    ]
+  }
+}
