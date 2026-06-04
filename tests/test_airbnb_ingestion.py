@@ -82,3 +82,57 @@ def test_load_airbnb_into_db_returns_correct_count(tmp_path, monkeypatch):
     init_warehouse(db_path)
     count = load_airbnb_into_db(db_path=db_path)
     assert count == 3  # 3 valid rows (row 4 dropped during cleaning)
+
+
+def test_load_airbnb_into_db_stores_correct_price(tmp_path, monkeypatch):
+    sample = _sample_raw_df()
+    fake_path = tmp_path / "listings.csv"
+
+    monkeypatch.setattr(
+        "geoai.ingestion.airbnb._download_raw",
+        lambda url, dest_dir: fake_path,
+    )
+    monkeypatch.setattr(
+        "geoai.ingestion.airbnb._read_raw",
+        lambda path: sample,
+    )
+
+    db_path = tmp_path / "test.duckdb"
+    load_airbnb_into_db(db_path=db_path)
+    import duckdb
+    con = duckdb.connect(str(db_path))
+    price = con.execute("SELECT price FROM listings WHERE id = 2").fetchone()[0]
+    con.close()
+    assert price == pytest.approx(1200.0)
+
+
+def test_clean_listings_superhost_none_for_unknown_value():
+    df = pl.DataFrame({
+        "id": [1],
+        "latitude": [41.15],
+        "longitude": [-8.61],
+        "neighbourhood_cleansed": ["X"],
+        "room_type": ["Entire home/apt"],
+        "property_type": ["Apartment"],
+        "accommodates": [2],
+        "bedrooms": [1.0],
+        "beds": [1.0],
+        "price": ["$80.00"],
+        "minimum_nights": [1],
+        "maximum_nights": [30],
+        "availability_30": [5],
+        "availability_60": [10],
+        "availability_90": [15],
+        "availability_365": [60],
+        "number_of_reviews": [5],
+        "review_scores_rating": [4.5],
+        "reviews_per_month": [0.5],
+        "host_id": [1001],
+        "host_name": ["Ana"],
+        "host_is_superhost": ["unknown"],
+        "amenities": ["[]"],
+        "last_scraped": ["2024-12-22"],
+        "name": ["Test"],
+    })
+    cleaned = clean_listings(df)
+    assert cleaned["host_is_superhost"][0] is None

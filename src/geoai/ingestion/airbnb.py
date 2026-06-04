@@ -2,8 +2,10 @@ import httpx
 import polars as pl
 import duckdb
 from pathlib import Path
+from urllib.parse import urlparse
 
 from geoai.config import RAW_AIRBNB_DIR, DB_PATH, AIRBNB_PORTO_URL
+from geoai.database.warehouse import init_warehouse
 
 _KEEP_COLS = [
     "id", "name", "latitude", "longitude", "neighbourhood_cleansed",
@@ -17,7 +19,7 @@ _KEEP_COLS = [
 
 def _download_raw(url: str, dest_dir: Path) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
-    filename = url.split("/")[-1]
+    filename = Path(urlparse(url).path).name
     dest_path = dest_dir / filename
     if dest_path.exists():
         return dest_path
@@ -43,11 +45,9 @@ def clean_listings(df: pl.DataFrame) -> pl.DataFrame:
     )
     # Parse superhost: "t"/"f" → bool
     df = df.with_columns(
-        pl.col("host_is_superhost")
-        .map_elements(
-            lambda x: True if x == "t" else (False if x == "f" else None),
-            return_dtype=pl.Boolean,
-        )
+        pl.when(pl.col("host_is_superhost") == "t").then(pl.lit(True))
+        .when(pl.col("host_is_superhost") == "f").then(pl.lit(False))
+        .otherwise(pl.lit(None, dtype=pl.Boolean))
         .alias("host_is_superhost")
     )
     # Select available columns from the desired set
@@ -64,17 +64,22 @@ def load_airbnb_into_db(
     db_path: Path = DB_PATH,
     url: str = AIRBNB_PORTO_URL,
 ) -> int:
+    # Ensure warehouse schema exists
+    _con = init_warehouse(db_path)
+    _con.close()
+
     raw_path = _download_raw(url, RAW_AIRBNB_DIR)
     df = _read_raw(raw_path)
     df = clean_listings(df)
 
-    con = duckdb.connect(str(db_path))
-    table_cols = [row[0] for row in con.execute("DESCRIBE listings").fetchall()]
-    df_cols_available = [c for c in table_cols if c in df.columns]
-    df = df.select(df_cols_available)
+    with duckdb.connect(str(db_path)) as con:
+        table_cols = [row[0] for row in con.execute("DESCRIBE listings").fetchall()]
+        df_cols_available = [c for c in table_cols if c in df.columns]
+        df = df.select(df_cols_available)
 
-    con.execute("DELETE FROM listings")
-    con.execute("INSERT INTO listings SELECT * FROM df")
-    count = con.execute("SELECT COUNT(*) FROM listings").fetchone()[0]
-    con.close()
-    return count
+        col_list = ", ".join(df_cols_available)
+        con.execute("BEGIN")
+        con.execute("DELETE FROM listings")
+        con.execute(f"INSERT INTO listings ({col_list}) SELECT {col_list} FROM df")
+        con.execute("COMMIT")
+        return con.execute("SELECT COUNT(*) FROM listings").fetchone()[0]
