@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS listings (
     host_id              BIGINT,
     host_name            VARCHAR,
     host_is_superhost    BOOLEAN,
-    amenities            VARCHAR,
+    amenities            JSON,
     last_scraped         DATE
 )
 """
@@ -55,4 +55,5 @@ def init_warehouse(db_path: Path = DB_PATH) -> duckdb.DuckDBPyConnection:
 
 
 def get_connection(db_path: Path = DB_PATH) -> duckdb.DuckDBPyConnection:
+    """Return a live connection to the warehouse. Caller must close it."""
     return duckdb.connect(str(db_path))

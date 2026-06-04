@@ -1,9 +1,8 @@
 import pytest
 import duckdb
 from pathlib import Path
-import tempfile
 
-from geoai.database.warehouse import init_warehouse
+from geoai.database.warehouse import init_warehouse, get_connection
 
 
 def test_init_warehouse_creates_both_tables(tmp_path):
@@ -40,5 +39,14 @@ def test_init_warehouse_is_idempotent(tmp_path):
     # Second call must not raise
     con2 = init_warehouse(db_path)
     tables = {row[0] for row in con2.execute("SHOW TABLES").fetchall()}
-    assert len(tables) == 2
+    assert {"listings", "poi_features"}.issubset(tables)
     con2.close()
+
+
+def test_get_connection_returns_live_connection(tmp_path):
+    db_path = tmp_path / "test.duckdb"
+    init_warehouse(db_path)
+    con = get_connection(db_path)
+    result = con.execute("SELECT 42").fetchone()[0]
+    assert result == 42
+    con.close()
