@@ -4,7 +4,7 @@ import duckdb
 import numpy as np
 import polars as pl
 
-from geoai.config import DB_PATH, PORTO_CENTER_LAT, PORTO_CENTER_LON
+from geoai.config import DB_PATH, PORTO_CENTER_LAT, PORTO_CENTER_LON, PORTO_LANDMARKS
 from geoai.database.warehouse import init_warehouse
 
 
@@ -50,16 +50,24 @@ def compute_accessibility(
     stations = pois.filter(
         (pl.col("poi_type") == "railway") & (pl.col("poi_subtype") == "station")
     )
+    supermarkets = pois.filter(pl.col("poi_subtype") == "supermarket")
 
     city_center_dists = haversine_km(lats, lons, PORTO_CENTER_LAT, PORTO_CENTER_LON)
     metro_dists = _nearest_km(lats, lons, metro["latitude"].to_numpy(), metro["longitude"].to_numpy())
     station_dists = _nearest_km(lats, lons, stations["latitude"].to_numpy(), stations["longitude"].to_numpy())
+    supermarket_dists = _nearest_km(lats, lons, supermarkets["latitude"].to_numpy(), supermarkets["longitude"].to_numpy())
 
-    return listings.select("id").with_columns([
+    new_cols = [
         pl.Series("dist_city_center_km", city_center_dists.tolist()),
         pl.Series("dist_nearest_metro_km", metro_dists),
         pl.Series("dist_nearest_station_km", station_dists),
-    ])
+        pl.Series("dist_nearest_supermarket_km", supermarket_dists),
+    ]
+    for name, (lat, lon) in PORTO_LANDMARKS.items():
+        dists = haversine_km(lats, lons, lat, lon)
+        new_cols.append(pl.Series(f"dist_{name}_km", dists.tolist()))
+
+    return listings.select("id").with_columns(new_cols)
 
 
 def load_accessibility_into_db(db_path: Path = DB_PATH) -> int:
@@ -72,24 +80,24 @@ def load_accessibility_into_db(db_path: Path = DB_PATH) -> int:
         pois = pl.from_arrow(
             con.execute(
                 "SELECT osm_id, poi_type, poi_subtype, latitude, longitude FROM poi_features"
-                " WHERE poi_type = 'railway'"
+                " WHERE poi_type = 'railway' OR poi_subtype = 'supermarket'"
             ).arrow()
         )
     result = compute_accessibility(listings, pois)
+    feature_cols = [c for c in result.columns if c != "id"]
+    col_list = "listing_id, " + ", ".join(feature_cols)
+    placeholders = ", ".join(["?"] * (len(feature_cols) + 1))
+    update_set = ", ".join(f"{c} = excluded.{c}" for c in feature_cols)
     with duckdb.connect(str(db_path)) as con:
         for row in result.iter_rows(named=True):
+            values = [row["id"]] + [row[c] for c in feature_cols]
             con.execute(
-                """
-                INSERT INTO listing_features (listing_id, dist_city_center_km,
-                    dist_nearest_metro_km, dist_nearest_station_km)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT (listing_id) DO UPDATE SET
-                    dist_city_center_km = excluded.dist_city_center_km,
-                    dist_nearest_metro_km = excluded.dist_nearest_metro_km,
-                    dist_nearest_station_km = excluded.dist_nearest_station_km
+                f"""
+                INSERT INTO listing_features ({col_list})
+                VALUES ({placeholders})
+                ON CONFLICT (listing_id) DO UPDATE SET {update_set}
                 """,
-                [row["id"], row["dist_city_center_km"],
-                 row["dist_nearest_metro_km"], row["dist_nearest_station_km"]],
+                values,
             )
     with duckdb.connect(str(db_path)) as con:
         return con.execute("SELECT COUNT(*) FROM listing_features").fetchone()[0]

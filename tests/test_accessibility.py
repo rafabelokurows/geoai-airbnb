@@ -22,7 +22,7 @@ def test_haversine_km_known_distance():
     assert d[0] == pytest.approx(274.0, abs=5.0)
 
 
-def test_compute_accessibility_returns_three_columns():
+def test_compute_accessibility_returns_all_columns():
     listings = pl.DataFrame({
         "id": [1], "latitude": [41.14961], "longitude": [-8.61099]
     })
@@ -38,9 +38,13 @@ def test_compute_accessibility_returns_three_columns():
     })
     pois = pl.concat([metro_pois, station_pois])
     result = compute_accessibility(listings, pois)
-    assert "dist_city_center_km" in result.columns
-    assert "dist_nearest_metro_km" in result.columns
-    assert "dist_nearest_station_km" in result.columns
+    expected = {
+        "dist_city_center_km", "dist_nearest_metro_km", "dist_nearest_station_km",
+        "dist_nearest_supermarket_km",
+        "dist_livraria_lello_km", "dist_torre_clerigos_km", "dist_ribeira_km",
+        "dist_ponte_luis_km", "dist_mercado_bolhao_km", "dist_jardins_cristal_km",
+    }
+    assert expected.issubset(set(result.columns))
 
 
 def test_compute_accessibility_city_center_distance():
@@ -62,3 +66,24 @@ def test_compute_accessibility_no_metro_returns_null():
     pois = pl.DataFrame(schema={"osm_id": pl.Utf8, "poi_type": pl.Utf8, "poi_subtype": pl.Utf8, "latitude": pl.Float64, "longitude": pl.Float64})
     result = compute_accessibility(listings, pois)
     assert result["dist_nearest_metro_km"][0] is None
+
+
+def test_compute_accessibility_landmark_distances_reasonable():
+    # Listing at Porto center — all landmarks should be within 3km
+    listings = pl.DataFrame({
+        "id": [1], "latitude": [41.14961], "longitude": [-8.61099]
+    })
+    pois = pl.DataFrame(schema={"osm_id": pl.Utf8, "poi_type": pl.Utf8, "poi_subtype": pl.Utf8, "latitude": pl.Float64, "longitude": pl.Float64})
+    result = compute_accessibility(listings, pois)
+    for col in ["dist_livraria_lello_km", "dist_torre_clerigos_km", "dist_ribeira_km",
+                "dist_ponte_luis_km", "dist_mercado_bolhao_km", "dist_jardins_cristal_km"]:
+        assert result[col][0] < 3.0, f"{col} unexpectedly large"
+
+
+def test_compute_accessibility_supermarket_null_when_no_pois():
+    listings = pl.DataFrame({
+        "id": [1], "latitude": [41.14961], "longitude": [-8.61099]
+    })
+    pois = pl.DataFrame(schema={"osm_id": pl.Utf8, "poi_type": pl.Utf8, "poi_subtype": pl.Utf8, "latitude": pl.Float64, "longitude": pl.Float64})
+    result = compute_accessibility(listings, pois)
+    assert result["dist_nearest_supermarket_km"][0] is None

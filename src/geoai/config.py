@@ -25,6 +25,16 @@ CALENDAR_URL = (
     "2024-12-22/data/calendar.csv.gz"
 )
 
+# (lat, lon) for key Porto landmarks — hardcoded fixed points
+PORTO_LANDMARKS = {
+    "livraria_lello":  (41.14672, -8.61480),
+    "torre_clerigos":  (41.14541, -8.61490),
+    "ribeira":         (41.14082, -8.61430),
+    "ponte_luis":      (41.13930, -8.60940),
+    "mercado_bolhao":  (41.14910, -8.60740),
+    "jardins_cristal": (41.14600, -8.62620),
+}
+
 OSM_POI_TAGS = {
     "amenity": [
         "restaurant", "bar", "cafe", "pub", "fast_food",
