@@ -11,7 +11,15 @@
       "Bash(PYTHONPATH=\"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\src\" python -c \"from geoai.config import DB_PATH, AIRBNB_PORTO_URL, OSM_CITY; print\\('OK'\\)\")",
       "Bash(rtk pytest *)",
       "Bash(Remove-Item \"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\tests\\\\test_config.py\" -Force)",
-      "mcp__plugin_context-mode_context-mode__ctx_batch_execute"
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
+      "Bash(Get-Content -Path \"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\src\\\\geoai\\\\database\\\\__init__.py\" -Raw)",
+      "Bash(Get-Content -Path \"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\src\\\\geoai\\\\ingestion\\\\__init__.py\" -Raw)",
+      "Bash(Get-Content -Path \"c:\\\\Users\\\\RafaelBelokurows\\\\Desktop\\\\geoai_airbnb\\\\tests\\\\__init__.py\" -Raw)",
+      "Bash(rtk ls *)",
+      "PowerShell(if \\(-not $?\\) { \"tests dir missing or empty\" })",
+      "Bash(rtk find *)",
+      "PowerShell(python3.13 --version 2>&1)",
+      "PowerShell(py -0p)"
     ]
   }
 }
