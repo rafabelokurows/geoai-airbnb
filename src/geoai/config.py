@@ -16,6 +16,15 @@ AIRBNB_PORTO_URL = (
 
 OSM_CITY = "Porto, Portugal"
 
+# Praça da Liberdade — conventional center of Porto
+PORTO_CENTER_LAT = 41.14961
+PORTO_CENTER_LON = -8.61099
+
+CALENDAR_URL = (
+    "https://data.insideairbnb.com/portugal/norte/porto/"
+    "2024-12-22/data/calendar.csv.gz"
+)
+
 OSM_POI_TAGS = {
     "amenity": [
         "restaurant", "bar", "cafe", "pub", "fast_food",

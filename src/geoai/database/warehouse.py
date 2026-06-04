@@ -46,11 +46,63 @@ CREATE TABLE IF NOT EXISTS poi_features (
 """
 
 
+_CREATE_CALENDAR = """
+CREATE TABLE IF NOT EXISTS calendar (
+    listing_id      BIGINT,
+    date            DATE,
+    available       BOOLEAN,
+    price           DOUBLE,
+    minimum_nights  INTEGER,
+    maximum_nights  INTEGER,
+    PRIMARY KEY (listing_id, date)
+)
+"""
+
+_CREATE_LISTING_FEATURES = """
+CREATE TABLE IF NOT EXISTS listing_features (
+    listing_id                  BIGINT PRIMARY KEY,
+    dist_city_center_km         DOUBLE,
+    dist_nearest_metro_km       DOUBLE,
+    dist_nearest_station_km     DOUBLE,
+    restaurants_250m            INTEGER,
+    restaurants_500m            INTEGER,
+    bars_500m                   INTEGER,
+    cafes_500m                  INTEGER,
+    supermarkets_1km            INTEGER,
+    attractions_1km             INTEGER,
+    museums_2km                 INTEGER,
+    parks_500m                  INTEGER,
+    listings_500m               INTEGER,
+    listings_1km                INTEGER,
+    avg_price_500m              DOUBLE,
+    median_price_neighbourhood  DOUBLE,
+    walkability_score           DOUBLE,
+    h3_cell_r8                  VARCHAR,
+    occupancy_rate_30d          DOUBLE,
+    occupancy_rate_90d          DOUBLE,
+    occupancy_rate_365d         DOUBLE
+)
+"""
+
+_CREATE_HEX_AGGREGATES = """
+CREATE TABLE IF NOT EXISTS hex_aggregates (
+    h3_cell         VARCHAR PRIMARY KEY,
+    listing_count   INTEGER,
+    avg_price       DOUBLE,
+    avg_occupancy   DOUBLE,
+    avg_walkability DOUBLE
+)
+"""
+
+
 def init_warehouse(db_path: Path = DB_PATH) -> duckdb.DuckDBPyConnection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db_path))
     con.execute(_CREATE_LISTINGS)
     con.execute(_CREATE_POI_FEATURES)
+    con.execute(_CREATE_CALENDAR)
+    con.execute(_CREATE_LISTING_FEATURES)
+    con.execute(_CREATE_HEX_AGGREGATES)
     return con
 
 

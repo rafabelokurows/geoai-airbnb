@@ -50,3 +50,24 @@ def test_get_connection_returns_live_connection(tmp_path):
     result = con.execute("SELECT 42").fetchone()[0]
     assert result == 42
     con.close()
+
+
+def test_calendar_table_exists(tmp_path):
+    con = init_warehouse(tmp_path / "test.duckdb")
+    tables = {r[0] for r in con.execute("SHOW TABLES").fetchall()}
+    assert "calendar" in tables
+    con.close()
+
+
+def test_listing_features_table_exists(tmp_path):
+    con = init_warehouse(tmp_path / "test.duckdb")
+    tables = {r[0] for r in con.execute("SHOW TABLES").fetchall()}
+    assert "listing_features" in tables
+    con.close()
+
+
+def test_hex_aggregates_table_exists(tmp_path):
+    con = init_warehouse(tmp_path / "test.duckdb")
+    tables = {r[0] for r in con.execute("SHOW TABLES").fetchall()}
+    assert "hex_aggregates" in tables
+    con.close()
