@@ -147,7 +147,7 @@ geoai_airbnb/
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 1 | Data ingestion + DuckDB warehouse | 🔄 In Progress |
+| 1 | Data ingestion + DuckDB warehouse | ✅ Complete |
 | 2 | Geospatial feature engineering | ⏳ Pending |
 | 3 | ML models (price, occupancy, revenue) | ⏳ Pending |
 | 4 | SHAP explainability | ⏳ Pending |
