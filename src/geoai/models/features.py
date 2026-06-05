@@ -60,6 +60,10 @@ def build_feature_matrix(db_path: Path = DB_PATH) -> pl.DataFrame:
             WHERE l.price IS NOT NULL
               AND l.price > 0
               AND lf.occupancy_rate_365d IS NOT NULL
+              AND (
+                SELECT COUNT(*) FROM calendar c
+                WHERE c.listing_id = l.id
+              ) >= 90
         """).arrow())
 
 
