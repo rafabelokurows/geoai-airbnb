@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from geoai.config import DB_PATH
 from geoai.api.routes.stats import router as stats_router
+from geoai.api.routes.hexagons import router as hexagons_router
 
 
 @asynccontextmanager
@@ -30,3 +31,4 @@ app.add_middleware(
 )
 
 app.include_router(stats_router)
+app.include_router(hexagons_router)
