@@ -41,9 +41,10 @@ PORTO_AIRPORT = (41.2370, -8.6699)
 OSM_POI_TAGS = {
     "amenity": [
         "restaurant", "bar", "cafe", "pub", "fast_food",
-        "supermarket", "pharmacy",
+        "pharmacy",
         "museum", "theatre", "cinema",
     ],
+    "shop": ["supermarket"],
     "tourism": ["museum", "attraction", "gallery", "viewpoint"],
     "leisure": ["park", "garden"],
     "railway": ["station", "subway_entrance"],

@@ -8,7 +8,7 @@ from typing import Any
 from geoai.config import OSM_CITY, OSM_POI_TAGS, DB_PATH
 from geoai.database.warehouse import init_warehouse
 
-_TAG_PRIORITY = ["amenity", "tourism", "leisure", "railway"]
+_TAG_PRIORITY = ["amenity", "shop", "tourism", "leisure", "railway"]
 
 
 def _fetch_osm(city: str, tags: dict[str, Any]) -> gpd.GeoDataFrame:
