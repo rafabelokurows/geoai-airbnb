@@ -13,14 +13,18 @@ _KEEP_COLS = [
 
 
 def clean_calendar(df: pl.DataFrame) -> pl.DataFrame:
-    df = df.with_columns(
+    transforms = [
         pl.when(pl.col("available") == "t").then(pl.lit(True))
         .when(pl.col("available") == "f").then(pl.lit(False))
         .otherwise(pl.lit(None, dtype=pl.Boolean))
         .alias("available"),
-        pl.col("price").str.replace_all(r"[\$,]", "").cast(pl.Float64, strict=False).alias("price"),
         pl.col("date").str.strptime(pl.Date, "%Y-%m-%d", strict=False).alias("date"),
-    )
+    ]
+    if "price" in df.columns:
+        transforms.append(
+            pl.col("price").str.replace_all(r"[\$,]", "").cast(pl.Float64, strict=False).alias("price")
+        )
+    df = df.with_columns(transforms)
     existing = [c for c in _KEEP_COLS if c in df.columns]
     return df.select(existing).drop_nulls(subset=["listing_id", "date"])
 
@@ -33,7 +37,7 @@ def load_calendar_into_db(
     raw_path = _download_raw(url, RAW_AIRBNB_DIR)
     df = pl.read_csv(raw_path, infer_schema_length=10000)
     df = clean_calendar(df)
-    col_list = ", ".join(_KEEP_COLS)
+    col_list = ", ".join(df.columns)
     with duckdb.connect(str(db_path)) as con:
         con.execute("BEGIN")
         con.execute("DELETE FROM calendar")
