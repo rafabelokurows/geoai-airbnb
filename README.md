@@ -140,10 +140,13 @@ pip install -e ".[dev]"
 # 3. Initialize warehouse and ingest
 python scripts/ingest_porto.py
 
-# 4. Run dashboard (Phase 5+)
+# 4. Train ML models and evaluate
+python -m geoai.models.runner
+
+# 5. Run dashboard (Phase 5+)
 streamlit run app/dashboard.py
 
-# 5. Run API (Phase 6+)
+# 6. Run API (Phase 6+)
 uvicorn src.geoai.api.main:app --reload
 ```
 
@@ -164,7 +167,7 @@ geoai_airbnb/
 │   │   ├── airbnb.py        # listings + calendar + reviews
 │   │   └── osm.py           # OSMnx POI fetcher
 │   ├── features/            # geospatial feature engineering (Phase 2)
-│   ├── ml/                  # price, occupancy, revenue models (Phase 3)
+│   ├── models/              # price, occupancy, revenue models (Phase 3)
 │   ├── explainability/      # SHAP analysis (Phase 4)
 │   ├── causal/              # DoWhy / EconML (Phase 7)
 │   ├── llm/                 # LangGraph analyst (Phase 7)
@@ -187,7 +190,7 @@ geoai_airbnb/
 |-------|-------|--------|
 | 1 | Data ingestion + DuckDB warehouse | ✅ Complete |
 | 2 | Geospatial feature engineering | ✅ Complete |
-| 3 | ML models (price, occupancy, revenue) | ⏳ Pending |
+| 3 | ML models (price, occupancy, revenue) | ✅ Complete |
 | 4 | SHAP explainability | ⏳ Pending |
 | 5 | Interactive maps + Streamlit dashboard | ⏳ Pending |
 | 6 | FastAPI + deployment | ⏳ Pending |

@@ -76,29 +76,41 @@ Radii: 250m, 500m, 1km, 2km
 
 ---
 
-## Phase 3: Machine Learning Models
+## Phase 3: Machine Learning Models ✅ Complete
+
+**Implementation:** `src/geoai/models/` — features, price, occupancy, revenue, evaluate, runner
 
 ### 3.1 Price Prediction Model
-- **Target:** `price` (nightly rate, EUR)
-- **Features:** geospatial features (Phase 2) + listing attributes
-- **Models:** Linear Regression (baseline) → CatBoost (production)
-- **Metrics:** RMSE, MAE, MAPE
-- **Output:** `predicted_price` per listing
+- **Target:** `price` (nightly rate, EUR), log-transformed for training
+- **Features:** 28 numeric geospatial/listing features + room type dummies (see `NUMERIC_FEATURE_COLS` in `features.py`)
+- **Model:** LightGBM (`n_estimators=500`, `learning_rate=0.05`, `num_leaves=63`, early stopping at 50 rounds)
+- **Split:** 80/20 train/test, `random_state=42`
+- **Target metric:** RMSE < €60
+- **Persistence:** `data/models/price_model.pkl`
+- **Output column:** `predicted_price`
 
 ### 3.2 Occupancy Prediction Model
-- **Target:** `occupancy_rate_365d` (from calendar data)
-- **Features:** same as price model + price itself
-- **Models:** LightGBM
-- **Metrics:** RMSE, MAE, R²
+- **Target:** `occupancy_rate_365d` ∈ [0, 1] (from calendar data)
+- **Features:** same 28 columns + `price` (price is a predictor of occupancy)
+- **Model:** LightGBM, same hyperparameters as price model; predictions clipped to [0, 1]
+- **Target metric:** MAE < 0.15
+- **Persistence:** `data/models/occupancy_model.pkl`
+- **Output column:** `predicted_occupancy`
 
-### 3.3 Revenue Prediction
-- **Formula:** `predicted_revenue = predicted_price × predicted_occupancy_rate × 365`
-- **Output:** `predicted_annual_revenue` per listing
+### 3.3 Revenue Estimation
+- **Formula:** `estimated_annual_revenue = predicted_price × predicted_occupancy × 365`
+- **Output:** Polars DataFrame with columns `listing_id`, `predicted_price`, `predicted_occupancy`, `estimated_annual_revenue`
+- **Entry point:** `from geoai.models.revenue import estimate_revenue`
 
-### 3.4 Investment Score
+### 3.4 CLI Runner
+- **Command:** `python -m geoai.models.runner [--db PATH]`
+- **Output:** RMSE, MAE, median estimated annual revenue; pass/fail vs targets
+
+### 3.5 Investment Score
 - **Formula:** `score = predicted_revenue - competition_penalty + accessibility_bonus + neighborhood_growth`
 - **Output:** ranked listing/neighbourhood investment score
 - **Use:** Investor Intelligence Module
+- **Status:** ⏳ Pending (Phase 4+)
 
 ---
 
