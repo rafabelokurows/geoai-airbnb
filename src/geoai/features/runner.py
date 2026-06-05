@@ -31,16 +31,16 @@ def run_all_features(db_path: Path = DB_PATH) -> dict:
     n_walk = load_walkability_into_db(db_path)
     print(f"  {n_walk:,} listings with walkability score")
 
-    print("Step 6/7: H3 hexagon assignment...")
-    n_listings_h3, n_hexes = load_h3_into_db(db_path)
-    print(f"  {n_listings_h3:,} listings assigned to {n_hexes:,} H3 cells")
-
-    print("Step 7/7: Occupancy estimation...")
+    print("Step 6/7: Occupancy estimation...")
     n_occ = load_occupancy_into_db(db_path)
     print(f"  {n_occ:,} listings with occupancy rates")
 
+    print("Step 7/7: H3 hexagon assignment...")
+    n_listings_h3, n_hexes = load_h3_into_db(db_path)
+    print(f"  {n_listings_h3:,} listings assigned to {n_hexes:,} H3 cells")
+
     return {
         "calendar_rows": n_calendar,
-        "listings_with_features": n_occ,
+        "listings_with_features": n_listings_h3,
         "h3_cells": n_hexes,
     }

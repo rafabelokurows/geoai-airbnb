@@ -44,8 +44,9 @@ def load_h3_into_db(db_path: Path = DB_PATH) -> tuple[int, int]:
         )
         features = pl.from_arrow(
             con.execute(
-                "SELECT listing_id, price, walkability_score, occupancy_rate_365d"
-                " FROM listing_features"
+                "SELECT lf.listing_id, l.price, lf.walkability_score, lf.occupancy_rate_365d"
+                " FROM listing_features lf"
+                " JOIN listings l ON l.id = lf.listing_id"
             ).arrow()
         )
 
