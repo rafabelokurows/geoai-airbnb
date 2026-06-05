@@ -8,6 +8,7 @@ from geoai.config import DB_PATH
 from geoai.api.routes.stats import router as stats_router
 from geoai.api.routes.hexagons import router as hexagons_router
 from geoai.api.routes.listings import router as listings_router
+from geoai.api.routes.shap import router as shap_router
 
 
 @asynccontextmanager
@@ -34,3 +35,4 @@ app.add_middleware(
 app.include_router(stats_router)
 app.include_router(hexagons_router)
 app.include_router(listings_router)
+app.include_router(shap_router)
