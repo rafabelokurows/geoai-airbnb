@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from geoai.config import DB_PATH
+from geoai.api.routes.stats import router as stats_router
 
 
 @asynccontextmanager
@@ -27,3 +28,5 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+app.include_router(stats_router)
