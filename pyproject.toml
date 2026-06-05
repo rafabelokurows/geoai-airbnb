@@ -9,12 +9,15 @@ requires-python = ">=3.11"
 dependencies = [
     "duckdb>=0.10.0",
     "polars>=0.20.0",
+    "pyarrow>=15.0.0",
     "osmnx>=1.9.0",
     "geopandas>=0.14.0",
     "shapely>=2.0.0",
     "httpx>=0.27.0",
     "numpy>=1.26.0",
-    "h3>=3.7.0",
+    "h3>=4.0.0",
+    "lightgbm>=4.3.0",
+    "scikit-learn>=1.4.0",
 ]
 
 [project.optional-dependencies]
