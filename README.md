@@ -62,7 +62,7 @@ Most Airbnb projects predict listing prices. This platform answers harder questi
 InsideAirbnb (Porto)          OpenStreetMap
   listings.csv.gz               OSMnx → POIs
   calendar.csv.gz     ──────►
-  reviews.csv.gz                Census / Tourism
+  reviews.csv.gz
   neighbourhoods.geojson
           │
           ▼
@@ -70,27 +70,35 @@ InsideAirbnb (Porto)          OpenStreetMap
   │   DuckDB Warehouse  │  ← single local file, zero-config
   │  listings           │
   │  calendar_features  │
-  │  poi_features        │
-  │  neighborhoods       │
+  │  listing_features   │
   └──────────┬──────────┘
              │
-     ┌───────┴────────┐
-     │                │
-     ▼                ▼
-  ML Layer      Geospatial Engine
-  CatBoost        H3 hexagons
-  LightGBM        GeoPandas
-  SHAP            PyDeck maps
-     │                │
-     └───────┬────────┘
+     ┌───────┴────────────────────┐
+     │                            │
+     ▼                            ▼
+  ML Pipeline               Geospatial Engine
+  LightGBM (price)            H3 hexagons (res-8)
+  LightGBM (occupancy)        GeoPandas / OSMnx
+  SHAP explainability         Haversine proximity
+     │
+     ▼
+  predict.py (batch)
+  listing_predictions
+  hex_aggregates
+  shap_global / hex_shap
+     │
+     ▼
+  ┌─────────────────────┐
+  │   FastAPI Backend   │  ← read-only DuckDB, <5ms responses
+  │  GET /api/stats     │
+  │  GET /api/hexagons  │
+  │  GET /api/listings  │
+  │  GET /api/shap/*    │
+  └──────────┬──────────┘
              │
-     Causal Inference
-     DoWhy / EconML
-             │
-     LLM Insight Engine
-     OpenAI / LangGraph
-             │
-     FastAPI + Streamlit
+     React + Deck.gl Frontend
+     H3HexagonLayer · ScatterplotLayer
+     SHAP bars · hex detail panel
 ```
 
 ---
@@ -114,15 +122,14 @@ Source: [Inside Airbnb](http://insideairbnb.com/get-the-data/)
 | Layer | Technology |
 |-------|-----------|
 | Data storage | DuckDB |
-| Data processing | Polars |
+| Data processing | Polars, PyArrow |
 | Geospatial | GeoPandas, OSMnx, H3, Shapely |
-| ML | CatBoost, LightGBM, Scikit-Learn |
-| Explainability | SHAP |
-| Causal inference | DoWhy, EconML |
-| AI / LLM | OpenAI, LangGraph |
-| API | FastAPI |
-| Visualization | PyDeck, Deck.gl |
-| Dashboard | Streamlit |
+| ML | LightGBM, Scikit-Learn |
+| Explainability | SHAP (TreeSHAP) |
+| API | FastAPI, uvicorn |
+| Frontend | React, Deck.gl (H3HexagonLayer) |
+| Causal inference | DoWhy, EconML (planned) |
+| AI / LLM | OpenAI, LangGraph (planned) |
 
 ---
 
@@ -140,14 +147,19 @@ pip install -e ".[dev]"
 # 3. Initialize warehouse and ingest
 python scripts/ingest_porto.py
 
-# 4. Train ML models and evaluate
+# 4. Compute geospatial features
+python -m geoai.features.runner
+
+# 5. Train ML models, evaluate, and compute predictions + SHAP
 python -m geoai.models.runner
 
-# 5. Run dashboard (Phase 5+)
-streamlit run app/dashboard.py
+# 6. Start the API
+uvicorn geoai.api.main:app --reload --port 8000
 
-# 6. Run API (Phase 6+)
-uvicorn src.geoai.api.main:app --reload
+# 7. Verify endpoints
+curl http://localhost:8000/api/stats
+curl "http://localhost:8000/api/hexagons?mode=price"
+# Interactive docs: http://localhost:8000/docs
 ```
 
 ---
@@ -158,27 +170,49 @@ uvicorn src.geoai.api.main:app --reload
 geoai_airbnb/
 ├── data/
 │   ├── raw/airbnb/          # InsideAirbnb CSVs
-│   └── raw/osm/             # OSM raw cache
+│   ├── raw/osm/             # OSM raw cache
+│   └── models/              # trained .pkl artifacts
 ├── src/geoai/
-│   ├── config.py            # paths and constants
+│   ├── config.py            # DB_PATH and constants
 │   ├── database/
-│   │   └── warehouse.py     # DuckDB init + connection
+│   │   └── warehouse.py     # DuckDB schema init
 │   ├── ingestion/
 │   │   ├── airbnb.py        # listings + calendar + reviews
 │   │   └── osm.py           # OSMnx POI fetcher
-│   ├── features/            # geospatial feature engineering (Phase 2)
-│   ├── models/              # price, occupancy, revenue models (Phase 3)
-│   ├── explainability/      # SHAP analysis (Phase 4)
-│   ├── causal/              # DoWhy / EconML (Phase 7)
-│   ├── llm/                 # LangGraph analyst (Phase 7)
-│   └── api/                 # FastAPI endpoints (Phase 6)
-├── app/                     # Streamlit dashboard (Phase 5)
+│   ├── features/
+│   │   ├── geo.py           # H3 assignment, Haversine distances
+│   │   ├── poi.py           # POI density + walkability
+│   │   ├── competition.py   # nearby listing counts + price index
+│   │   ├── calendar.py      # occupancy rate features
+│   │   └── runner.py        # pipeline entry point
+│   ├── models/
+│   │   ├── features.py      # build_feature_matrix, prepare_X_y_*
+│   │   ├── price.py         # LightGBM price model
+│   │   ├── occupancy.py     # LightGBM occupancy model
+│   │   ├── evaluate.py      # RMSE / MAE evaluation report
+│   │   ├── predict.py       # batch predict → 4 DuckDB tables
+│   │   └── runner.py        # train → evaluate → predict pipeline
+│   ├── explainability/
+│   │   └── shap_analysis.py # global + per-listing SHAP (offline)
+│   └── api/
+│       ├── main.py          # FastAPI app + lifespan (read-only DuckDB)
+│       ├── deps.py          # get_db dependency
+│       ├── schemas.py       # Pydantic response models
+│       └── routes/
+│           ├── stats.py     # GET /api/stats
+│           ├── hexagons.py  # GET /api/hexagons[/{hex_id}]
+│           ├── listings.py  # GET /api/listings
+│           └── shap.py      # GET /api/shap/global, /api/shap/{hex_id}
+├── tests/
+│   ├── ingestion/
+│   ├── features/
+│   ├── models/
+│   └── api/                 # FastAPI route tests (TestClient + fixture DB)
 ├── scripts/
 │   └── ingest_porto.py      # Phase 1 ingestion runner
-├── tests/
 ├── docs/
 │   ├── adr/                 # Architecture Decision Records
-│   └── superpowers/plans/   # implementation plans
+│   └── superpowers/         # plans + specs
 └── pyproject.toml
 ```
 
@@ -191,10 +225,10 @@ geoai_airbnb/
 | 1 | Data ingestion + DuckDB warehouse | ✅ Complete |
 | 2 | Geospatial feature engineering | ✅ Complete |
 | 3 | ML models (price, occupancy, revenue) | ✅ Complete |
-| 4 | SHAP explainability | ⏳ Pending |
-| 5 | Interactive maps + Streamlit dashboard | ⏳ Pending |
-| 6 | FastAPI + deployment | ⏳ Pending |
-| 7 | Causal inference + LLM analyst | ⏳ Pending |
+| 4 | SHAP explainability | ✅ Complete |
+| 5 | FastAPI backend (predictions + SHAP API) | ✅ Complete |
+| 6 | React + Deck.gl frontend | 🔄 In Progress |
+| 7 | Causal inference + LLM analyst | ⏳ Planned |
 
 ---
 

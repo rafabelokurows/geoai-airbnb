@@ -1,6 +1,6 @@
 # FastAPI Backend — Design Spec
 **Date:** 2026-06-05  
-**Status:** Approved  
+**Status:** Implemented  
 **Scope:** Read-only REST API serving pre-computed predictions, H3 hex aggregates, and SHAP values from DuckDB to the React + DeckGL frontend.
 
 ---
@@ -65,24 +65,26 @@ All tables use `CREATE OR REPLACE TABLE` — safe to re-run after retraining.
 ### `listing_predictions`
 | Column | Type | Notes |
 |---|---|---|
-| listing_id | VARCHAR | FK to listings.id |
-| h3_hex_id | VARCHAR | H3 res-8 hex ID |
-| predicted_price | FLOAT | €/night (exp of log prediction) |
-| predicted_occupancy | FLOAT | 0–1 |
-| predicted_revenue | FLOAT | price × occupancy × 30 |
+| listing_id | BIGINT | FK to listings.id |
+| h3_cell_r8 | VARCHAR | H3 res-8 hex ID |
+| predicted_price | DOUBLE | €/night (exp of log prediction) |
+| predicted_occupancy | DOUBLE | 0–1 |
+| predicted_revenue | DOUBLE | price × occupancy × 30 |
+| latitude | DOUBLE | from listings table |
+| longitude | DOUBLE | from listings table |
 
 ### `hex_aggregates`
 | Column | Type | Notes |
 |---|---|---|
-| h3_hex_id | VARCHAR | PK |
-| avg_price | FLOAT | |
-| avg_occupancy | FLOAT | |
-| avg_revenue | FLOAT | |
-| listing_count | INT | |
-| walkability_score | FLOAT | avg across listings in hex |
-| transit_score | FLOAT | |
-| restaurant_density | FLOAT | |
-| competition_score | FLOAT | |
+| h3_cell_r8 | VARCHAR | PK |
+| listing_count | BIGINT | |
+| avg_price | DOUBLE | |
+| avg_occupancy | DOUBLE | |
+| avg_revenue | DOUBLE | |
+| avg_walkability_score | DOUBLE | avg across listings in hex |
+| avg_restaurant_density | DOUBLE | |
+| avg_dist_city_center_km | DOUBLE | |
+| avg_competition_score | DOUBLE | listings_500m avg |
 
 Populated via `GROUP BY h3_hex_id` over `listing_predictions JOIN listing_features`.
 
@@ -91,16 +93,16 @@ Populated via `GROUP BY h3_hex_id` over `listing_predictions JOIN listing_featur
 |---|---|---|
 | model | VARCHAR | `'price'` or `'occupancy'` |
 | feature | VARCHAR | |
-| importance | FLOAT | mean(abs(SHAP)) across all listings |
+| importance | DOUBLE | mean(abs(SHAP)) across all listings |
 
 ### `hex_shap`
 | Column | Type | Notes |
 |---|---|---|
-| h3_hex_id | VARCHAR | |
+| h3_cell_r8 | VARCHAR | |
 | model | VARCHAR | `'price'` or `'occupancy'` |
 | feature | VARCHAR | |
-| avg_impact | FLOAT | mean(SHAP value) across listings in hex |
-| base_value | FLOAT | explainer.expected_value (same for all rows) |
+| avg_impact | DOUBLE | mean(SHAP value) across listings in hex |
+| base_value | DOUBLE | explainer.expected_value (same for all rows) |
 
 ---
 
@@ -227,7 +229,21 @@ uvicorn geoai.api.main:app --reload --port 8000
 
 ---
 
-## 8. Out of Scope
+## 8. Implementation Notes
+
+**Actual vs. spec deviations:**
+- `state.py` was not created; the DuckDB connection is stored directly on `app.state.db` in `main.py`
+- Column names use `h3_cell_r8` (not `h3_hex_id`) to match the `listing_features` table schema from Phase 2
+- `listing_predictions` includes `latitude` and `longitude` columns (needed by the listings scatter endpoint)
+- `hex_aggregates` uses `avg_` prefixes on all metric columns for naming consistency
+- `transit_score` was not included in `hex_aggregates` (not available in current feature set)
+- Tests use `app.dependency_overrides[get_db]` pattern with an in-memory DuckDB fixture — 109 tests passing
+
+**Test count at implementation:** 109 (84 pre-existing + 25 new API tests)
+
+---
+
+## 9. Out of Scope
 
 - Authentication
 - Docker / deployment
