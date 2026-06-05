@@ -20,11 +20,13 @@ def train_occupancy_model(db_path: Path = DB_PATH) -> dict:
     )
     model = lgb.LGBMRegressor(
         n_estimators=1000,
-        learning_rate=0.05,
-        num_leaves=127,
+        learning_rate=0.03,
+        num_leaves=63,
         min_child_samples=20,
         subsample=0.8,
         colsample_bytree=0.8,
+        reg_alpha=0.1,
+        reg_lambda=0.1,
         random_state=42,
         n_jobs=-1,
         verbose=-1,
