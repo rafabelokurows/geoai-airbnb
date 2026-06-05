@@ -1,50 +1,59 @@
 from pydantic import BaseModel
 
 
-class StatsResponse(BaseModel):
+class HealthResponse(BaseModel):
+    status: str
+
+
+class KpiResponse(BaseModel):
+    listing_count: int
+    listings_with_predictions: int
     avg_price: float
     avg_occupancy: float
-    median_revenue: float
+    median_annual_revenue: float
+
+
+class HexCell(BaseModel):
+    h3_cell: str
     listing_count: int
-
-
-class HexSummary(BaseModel):
-    hex_id: str
-    value: float
-    listing_count: int
-
-
-class HexDetail(BaseModel):
-    hex_id: str
     avg_price: float
     avg_occupancy: float
     avg_revenue: float
-    listing_count: int
-    avg_walkability_score: float
-    avg_restaurant_density: float
-    avg_dist_city_center_km: float
-    avg_competition_score: float
 
 
 class ListingPoint(BaseModel):
     id: int
     latitude: float
     longitude: float
+    price: float | None
+    room_type: str | None
+    predicted_price: float | None
+    predicted_occupancy: float | None
+    estimated_annual_revenue: float | None
+
+
+class ListingsResponse(BaseModel):
+    listings: list[ListingPoint]
+    total: int
+
+
+class OpportunityListing(BaseModel):
+    listing_id: int
+    latitude: float
+    longitude: float
+    actual_price: float
     predicted_price: float
-    predicted_occupancy: float
+    opportunity_gap: float
+    estimated_uplift_annual: float
 
 
-class ShapFeature(BaseModel):
+class Driver(BaseModel):
     feature: str
-    importance: float
+    impact: float
 
 
-class ShapDriver(BaseModel):
-    feature: str
-    avg_impact: float
-
-
-class HexShapResponse(BaseModel):
-    hex_id: str
+class ExplainResponse(BaseModel):
+    listing_id: int
+    predicted_price: float
     base_value: float
-    drivers: list[ShapDriver]
+    drivers: list[Driver]

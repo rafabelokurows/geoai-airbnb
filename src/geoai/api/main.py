@@ -1,38 +1,29 @@
 from contextlib import asynccontextmanager
 
-import duckdb
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from geoai.config import DB_PATH
-from geoai.api.routes.stats import router as stats_router
-from geoai.api.routes.hexagons import router as hexagons_router
-from geoai.api.routes.listings import router as listings_router
-from geoai.api.routes.shap import router as shap_router
+from geoai.api.deps import load_app_state
+from geoai.api.routes import health
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # read_only=True raises IOException if file doesn't exist — guard for test environments
-    if DB_PATH.exists():
-        app.state.db = duckdb.connect(str(DB_PATH), read_only=True)
-    else:
-        app.state.db = None
+    load_app_state()
     yield
-    if app.state.db is not None:
-        app.state.db.close()
 
 
-app = FastAPI(title="GeoAI Airbnb API", lifespan=lifespan)
+def create_app(load_state: bool = True) -> FastAPI:
+    lifespan_ctx = lifespan if load_state else None
+    app = FastAPI(title="GeoAI Airbnb API", lifespan=lifespan_ctx)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.include_router(health.router, prefix="/api")
+    return app
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
-    allow_methods=["GET"],
-    allow_headers=["*"],
-)
 
-app.include_router(stats_router)
-app.include_router(hexagons_router)
-app.include_router(listings_router)
-app.include_router(shap_router)
+app = create_app()
