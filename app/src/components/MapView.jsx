@@ -57,6 +57,8 @@ export default function MapView({ onListingClick }) {
       ]
     }
 
+    if (!hexData.length) return []
+
     const valueKey = activeLayer === 'price' ? 'avg_price' : 'avg_revenue'
     const vals = hexData.map(d => d[valueKey]).filter(Boolean)
     const min = Math.min(...vals)
