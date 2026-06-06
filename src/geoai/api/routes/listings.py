@@ -1,29 +1,33 @@
-import duckdb
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Query
 
-from geoai.api.deps import get_db
-from geoai.api.schemas import ListingPoint
+from geoai.api.deps import AppState, get_state
+from geoai.api.schemas import ListingPoint, ListingsResponse
 
 router = APIRouter()
 
 
-@router.get("/api/listings", response_model=list[ListingPoint])
-def get_listings(
-    hex_id: str,
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
-):
-    rows = db.execute("""
-        SELECT listing_id, latitude, longitude, predicted_price, predicted_occupancy
-        FROM listing_predictions
-        WHERE h3_cell_r8 = ?
-        ORDER BY listing_id
-    """, [hex_id]).fetchall()
-    content = [
-        ListingPoint(
-            id=r[0], latitude=r[1], longitude=r[2],
-            predicted_price=r[3], predicted_occupancy=r[4],
-        ).model_dump()
-        for r in rows
-    ]
-    return JSONResponse(content=content, headers={"Cache-Control": "max-age=3600"})
+@router.get("/listings", response_model=ListingsResponse)
+def listings(
+    limit: int = Query(default=5000, le=15000),
+    offset: int = Query(default=0, ge=0),
+    state: AppState = Depends(get_state),
+) -> ListingsResponse:
+    df = state.listings_df
+    total = len(df)
+    page = df.slice(offset, limit)
+    return ListingsResponse(
+        listings=[
+            ListingPoint(
+                id=int(row["id"]),
+                latitude=float(row["latitude"]),
+                longitude=float(row["longitude"]),
+                price=float(row["price"]) if row["price"] is not None else None,
+                room_type=row["room_type"],
+                predicted_price=float(row["predicted_price"]) if row["predicted_price"] is not None else None,
+                predicted_occupancy=float(row["predicted_occupancy"]) if row["predicted_occupancy"] is not None else None,
+                estimated_annual_revenue=float(row["estimated_annual_revenue"]) if row["estimated_annual_revenue"] is not None else None,
+            )
+            for row in page.iter_rows(named=True)
+        ],
+        total=total,
+    )
