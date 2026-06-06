@@ -31,6 +31,7 @@ export default function MapView({ onListingClick }) {
   const [opportunities, setOpportunities] = useState([])
   const [activeLayer, setActiveLayer] = useState('price')
   const [viewState, setViewState] = useState(INITIAL_VIEW)
+  const [deckReady, setDeckReady] = useState(false)
 
   useEffect(() => {
     fetchHexAggregates().then(setHexData).catch(console.error)
@@ -58,7 +59,7 @@ export default function MapView({ onListingClick }) {
       ]
     }
 
-    if (!hexData.length) return []
+    if (!deckReady || !hexData.length) return []
 
     const valueKey = activeLayer === 'price' ? 'avg_price' : 'avg_revenue'
     const vals = hexData.map(d => d[valueKey]).filter(Boolean)
@@ -81,7 +82,7 @@ export default function MapView({ onListingClick }) {
         onClick: ({ object }) => object && onListingClick(null),
       }),
     ]
-  }, [activeLayer, hexData, opportunities, onListingClick])
+  }, [activeLayer, hexData, opportunities, onListingClick, deckReady])
 
   return (
     <div className="map-container">
@@ -89,6 +90,7 @@ export default function MapView({ onListingClick }) {
       <DeckGL
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(vs)}
+        onAfterRender={() => !deckReady && setDeckReady(true)}
         controller={true}
         layers={buildLayers()}
         getTooltip={({ object }) => {
