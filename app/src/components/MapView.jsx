@@ -30,6 +30,7 @@ export default function MapView({ onListingClick }) {
   const [hexData, setHexData] = useState([])
   const [opportunities, setOpportunities] = useState([])
   const [activeLayer, setActiveLayer] = useState('price')
+  const [viewState, setViewState] = useState(INITIAL_VIEW)
 
   useEffect(() => {
     fetchHexAggregates().then(setHexData).catch(console.error)
@@ -86,7 +87,8 @@ export default function MapView({ onListingClick }) {
     <div className="map-container">
       <LayerControls active={activeLayer} onChange={setActiveLayer} />
       <DeckGL
-        initialViewState={INITIAL_VIEW}
+        viewState={viewState}
+        onViewStateChange={({ viewState: vs }) => setViewState(vs)}
         controller={true}
         layers={buildLayers()}
         getTooltip={({ object }) => {
