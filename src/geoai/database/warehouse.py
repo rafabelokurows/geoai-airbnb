@@ -7,6 +7,7 @@ _CREATE_LISTINGS = """
 CREATE TABLE IF NOT EXISTS listings (
     id                   BIGINT PRIMARY KEY,
     name                 VARCHAR,
+    description          VARCHAR,
     latitude             DOUBLE,
     longitude            DOUBLE,
     neighbourhood        VARCHAR,
@@ -114,6 +115,8 @@ def init_warehouse(db_path: Path = DB_PATH) -> duckdb.DuckDBPyConnection:
     con.execute(_CREATE_CALENDAR)
     con.execute(_CREATE_LISTING_FEATURES)
     con.execute(_CREATE_HEX_AGGREGATES)
+    # Migrations for existing DBs
+    con.execute("ALTER TABLE listings ADD COLUMN IF NOT EXISTS description VARCHAR")
     return con
 
 

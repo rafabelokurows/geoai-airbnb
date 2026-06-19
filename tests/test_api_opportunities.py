@@ -34,7 +34,7 @@ def test_opportunities_only_returns_underpriced():
     assert r.status_code == 200
     data = r.json()
     assert len(data) == 1
-    assert data[0]["listing_id"] == 1
+    assert data[0]["listing_id"] == "1"
 
 
 def test_opportunities_schema():

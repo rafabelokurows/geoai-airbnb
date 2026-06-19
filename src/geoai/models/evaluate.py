@@ -9,7 +9,7 @@ from geoai.models.revenue import estimate_revenue
 def run_evaluation(db_path: Path = DB_PATH) -> dict:
     print("Training price model...")
     price = train_price_model(db_path)
-    print(f"  RMSE: €{price['rmse']:.2f}  (n_train={price['n_train']}, n_test={price['n_test']})")
+    print(f"  RMSE: EUR{price['rmse']:.2f}  (n_train={price['n_train']}, n_test={price['n_test']})")
 
     print("Training occupancy model...")
     occ = train_occupancy_model(db_path)
@@ -17,7 +17,7 @@ def run_evaluation(db_path: Path = DB_PATH) -> dict:
 
     revenue_df = estimate_revenue(db_path)
     median_revenue = float(revenue_df["estimated_annual_revenue"].median())
-    print(f"  Median estimated annual revenue: €{median_revenue:,.0f}")
+    print(f"  Median estimated annual revenue: EUR{median_revenue:,.0f}")
 
     return {
         "price_rmse": price["rmse"],

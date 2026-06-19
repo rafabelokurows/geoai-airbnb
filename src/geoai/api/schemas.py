@@ -38,7 +38,7 @@ class ListingsResponse(BaseModel):
 
 
 class OpportunityListing(BaseModel):
-    listing_id: int
+    listing_id: str
     latitude: float
     longitude: float
     actual_price: float
@@ -57,3 +57,8 @@ class ExplainResponse(BaseModel):
     predicted_price: float
     base_value: float
     drivers: list[Driver]
+
+
+class FeatureImportance(BaseModel):
+    feature: str
+    importance: float

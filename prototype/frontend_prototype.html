@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoAI Airbnb · Porto Dashboard</title>
+  <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3450;
+      --accent: #6c63ff;
+      --accent2: #00d9a3;
+      --text: #e8eaf6;
+      --muted: #8892b0;
+      --red: #ff6b6b;
+      --yellow: #ffd166;
+      --green: #06d6a0;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* ── Top Bar ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 52px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0; z-index: 100;
+    }
+    .logo { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--accent); }
+    .city-badge {
+      background: var(--surface2); border: 1px solid var(--border);
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; color: var(--muted);
+    }
+    .header-right { display: flex; gap: 10px; align-items: center; }
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border); color: var(--muted);
+      padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary {
+      background: var(--accent); border: none; color: #fff;
+      padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;
+    }
+
+    /* ── Layout ── */
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Left Panel ── */
+    .sidebar {
+      width: 300px; flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    .sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
+    .section-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+    /* Metric cards */
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .metric-card .val { font-size: 22px; font-weight: 700; }
+    .metric-card .lab { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .metric-card .delta { font-size: 10px; margin-top: 4px; }
+    .up { color: var(--green); }
+    .down { color: var(--red); }
+
+    /* Filters */
+    .filter-row { display: flex; flex-direction: column; gap: 8px; }
+    .filter-item { display: flex; justify-content: space-between; align-items: center; }
+    .filter-item label { font-size: 12px; color: var(--muted); }
+    select, input[type=range] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 5px; padding: 4px 8px; font-size: 12px; }
+    select:focus { outline: none; border-color: var(--accent); }
+    input[type=range] { border: none; padding: 0; width: 120px; accent-color: var(--accent); }
+    .range-val { font-size: 11px; color: var(--accent); min-width: 38px; text-align: right; }
+
+    /* Layer toggle */
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .toggle-row span { font-size: 12px; }
+    .toggle {
+      position: relative; width: 36px; height: 20px;
+    }
+    .toggle input { display: none; }
+    .slider {
+      position: absolute; inset: 0; background: var(--border); border-radius: 20px; cursor: pointer; transition: .2s;
+    }
+    .slider::before {
+      content: ''; position: absolute; left: 3px; top: 3px;
+      width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: .2s;
+    }
+    .toggle input:checked + .slider { background: var(--accent); }
+    .toggle input:checked + .slider::before { transform: translateX(16px); }
+
+    /* SHAP bars */
+    .shap-scroll { overflow-y: auto; flex: 1; padding: 16px; }
+    .shap-row { margin-bottom: 10px; }
+    .shap-label { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .shap-label span:first-child { font-size: 11px; color: var(--text); }
+    .shap-label span:last-child { font-size: 11px; color: var(--muted); }
+    .shap-bar-bg { background: var(--surface2); border-radius: 3px; height: 6px; overflow: hidden; }
+    .shap-bar { height: 100%; border-radius: 3px; transition: width .4s; }
+    .pos { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .neg { background: linear-gradient(90deg, var(--red), #ff9f7f); }
+
+    /* ── Map Area ── */
+    .map-wrap { flex: 1; position: relative; overflow: hidden; }
+    #map-canvas { width: 100%; height: 100%; }
+
+    /* Map overlay controls */
+    .map-controls {
+      position: absolute; top: 14px; left: 14px; z-index: 10;
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .layer-pill {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 5px 12px; border-radius: 20px; font-size: 11px; cursor: pointer;
+      transition: all .15s; user-select: none;
+    }
+    .layer-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* Legend */
+    .legend {
+      position: absolute; bottom: 14px; right: 14px; z-index: 10;
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 12px 14px; border-radius: 10px; min-width: 150px;
+    }
+    .legend-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .legend-gradient { height: 8px; border-radius: 4px; background: linear-gradient(90deg, #2196F3, #4CAF50, #FFEB3B, #FF5722); margin-bottom: 6px; }
+    .legend-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+
+    /* Tooltip */
+    #tooltip {
+      position: absolute; z-index: 50; pointer-events: none;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; min-width: 180px;
+      display: none; box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    }
+    .tt-title { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .tt-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .tt-row span:first-child { font-size: 12px; color: var(--muted); }
+    .tt-row span:last-child { font-size: 12px; font-weight: 600; }
+
+    /* Right panel — listing detail */
+    .detail-panel {
+      width: 260px; flex-shrink: 0;
+      background: var(--surface); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .detail-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .detail-header h3 { font-size: 13px; }
+    .detail-header p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .detail-scroll { overflow-y: auto; flex: 1; padding: 16px; }
+    .detail-stat { background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .detail-stat .d-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+    .detail-stat .d-val { font-size: 20px; font-weight: 700; }
+    .detail-stat .d-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .score-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .score-bar .s-label { font-size: 11px; color: var(--muted); flex: 1; }
+    .score-bar .s-bar-bg { flex: 2; background: var(--surface2); border-radius: 3px; height: 5px; }
+    .score-bar .s-bar { height: 5px; border-radius: 3px; background: var(--accent2); }
+    .score-bar .s-val { font-size: 11px; min-width: 28px; text-align: right; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">GeoAI <span>·</span> Airbnb Intelligence</div>
+  <div class="city-badge">📍 Porto, Portugal · Dec 2024</div>
+  <div class="header-right">
+    <button class="btn-ghost">Export</button>
+    <button class="btn-primary">API Docs</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ── Left Sidebar ── -->
+  <div class="sidebar">
+
+    <!-- KPI Cards -->
+    <div class="sidebar-section">
+      <div class="section-label">Market Overview</div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="val">€87</div>
+          <div class="lab">Avg Predicted Price</div>
+          <div class="delta up">↑ 4.2% vs market</div>
+        </div>
+        <div class="metric-card">
+          <div class="val">71%</div>
+          <div class="lab">Occupancy Rate</div>
+          <div class="delta up">↑ 8.1% vs Q3</div>
+        </div>
+        <div class="metric-card">
+          <div class="val">€1,840</div>
+          <div class="lab">Avg Monthly Rev</div>
+          <div class="delta up">↑ 12% YoY</div>
+        </div>
+        <div class="metric-card">
+          <div class="val">4,218</div>
+          <div class="lab">Active Listings</div>
+          <div class="delta down">↓ 3% this month</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="sidebar-section">
+      <div class="section-label">Filters</div>
+      <div class="filter-row">
+        <div class="filter-item">
+          <label>Room Type</label>
+          <select>
+            <option>Entire home</option>
+            <option>Private room</option>
+            <option>Shared room</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>Min Price (€)</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="range" min="20" max="500" value="40" id="priceRange" oninput="document.getElementById('priceVal').textContent='€'+this.value" />
+            <span class="range-val" id="priceVal">€40</span>
+          </div>
+        </div>
+        <div class="filter-item">
+          <label>Min Occupancy</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="range" min="0" max="100" value="50" id="occRange" oninput="document.getElementById('occVal').textContent=this.value+'%'" />
+            <span class="range-val" id="occVal">50%</span>
+          </div>
+        </div>
+        <div class="filter-item">
+          <label>H3 Resolution</label>
+          <select>
+            <option>7 — Neighborhood</option>
+            <option selected>8 — Block</option>
+            <option>9 — Street</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer toggles -->
+    <div class="sidebar-section">
+      <div class="section-label">Map Layers</div>
+      <div class="toggle-row">
+        <span>H3 Price Heatmap</span>
+        <label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>Listing Scatter</span>
+        <label class="toggle"><input type="checkbox" checked /><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>POI Overlay</span>
+        <label class="toggle"><input type="checkbox" /><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>Competition Density</span>
+        <label class="toggle"><input type="checkbox" /><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <!-- SHAP Feature Importance -->
+    <div class="section-label" style="padding:14px 16px 0">SHAP · Top Drivers</div>
+    <div class="shap-scroll">
+      <div class="shap-row">
+        <div class="shap-label"><span>Walk Score</span><span>+0.42</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar pos" style="width:100%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Restaurant Density</span><span>+0.38</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar pos" style="width:90%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Dist. to City Centre</span><span>−0.31</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar neg" style="width:74%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Metro Proximity</span><span>+0.27</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar pos" style="width:64%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Competition Score</span><span>−0.24</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar neg" style="width:57%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Review Score</span><span>+0.19</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar pos" style="width:45%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Airport Distance</span><span>−0.14</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar neg" style="width:33%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Bedrooms</span><span>+0.11</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar pos" style="width:26%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Map ── -->
+  <div class="map-wrap">
+    <canvas id="map-canvas"></canvas>
+
+    <!-- Layer pills -->
+    <div class="map-controls">
+      <div class="layer-pill active" onclick="setMode(this,'price')">Predicted Price</div>
+      <div class="layer-pill" onclick="setMode(this,'occupancy')">Occupancy</div>
+      <div class="layer-pill" onclick="setMode(this,'revenue')">Revenue</div>
+      <div class="layer-pill" onclick="setMode(this,'shap')">SHAP Impact</div>
+    </div>
+
+    <!-- Simulated map with DeckGL-style hexagons -->
+    <svg id="hex-map" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 900 680" preserveAspectRatio="xMidYMid slice">
+      <!-- Porto basemap placeholder -->
+      <rect width="900" height="680" fill="#1a2035"/>
+      <!-- "River Douro" -->
+      <path d="M0,480 Q200,460 400,450 Q600,440 900,430" fill="none" stroke="#1e3a5f" stroke-width="28" opacity="0.8"/>
+      <path d="M0,485 Q200,465 400,455 Q600,445 900,435" fill="none" stroke="#243a5e" stroke-width="14" opacity="0.6"/>
+
+      <!-- Road grid -->
+      <g stroke="#232840" stroke-width="1.5" fill="none" opacity="0.7">
+        <line x1="0" y1="200" x2="900" y2="200"/>
+        <line x1="0" y1="300" x2="900" y2="310"/>
+        <line x1="0" y1="380" x2="900" y2="380"/>
+        <line x1="150" y1="0" x2="150" y2="480"/>
+        <line x1="300" y1="0" x2="290" y2="480"/>
+        <line x1="450" y1="0" x2="440" y2="480"/>
+        <line x1="600" y1="0" x2="610" y2="480"/>
+        <line x1="750" y1="0" x2="760" y2="480"/>
+      </g>
+    </svg>
+
+    <!-- Animated H3 hexagons -->
+    <svg id="hex-overlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:all;" viewBox="0 0 900 680">
+    </svg>
+
+    <!-- Tooltip -->
+    <div id="tooltip">
+      <div class="tt-title">H3 Cell · Resolution 8</div>
+      <div class="tt-row"><span>Predicted Price</span><span id="tt-price" style="color:var(--accent2)">€94</span></div>
+      <div class="tt-row"><span>Occupancy</span><span id="tt-occ">74%</span></div>
+      <div class="tt-row"><span>Est. Revenue</span><span id="tt-rev">€2,070</span></div>
+      <div class="tt-row"><span>Listings in Cell</span><span id="tt-lst">23</span></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title" id="legend-title">Predicted Nightly Price (€)</div>
+      <div class="legend-gradient" id="legend-gradient"></div>
+      <div class="legend-labels">
+        <span id="leg-min">€30</span>
+        <span id="leg-mid">€90</span>
+        <span id="leg-max">€200+</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right Panel ── -->
+  <div class="detail-panel">
+    <div class="detail-header">
+      <h3>Ribeira · Hex 88395ad6dfffff</h3>
+      <p>City Centre · 23 listings</p>
+    </div>
+    <div class="detail-scroll">
+
+      <div class="detail-stat">
+        <div class="d-label">Predicted Price</div>
+        <div class="d-val" style="color:var(--accent2)">€112 <span style="font-size:13px;color:var(--muted)">/night</span></div>
+        <div class="d-sub">Market avg: €87 · +29% premium</div>
+      </div>
+
+      <div class="detail-stat">
+        <div class="d-label">Occupancy Rate</div>
+        <div class="d-val">78%</div>
+        <div class="d-sub">High season · 23.4 booked days/mo</div>
+      </div>
+
+      <div class="detail-stat">
+        <div class="d-label">Est. Monthly Revenue</div>
+        <div class="d-val" style="color:var(--yellow)">€2,621</div>
+        <div class="d-sub">Top 12% citywide</div>
+      </div>
+
+      <div class="section-label" style="margin:12px 0 8px">Location Scores</div>
+
+      <div class="score-bar">
+        <span class="s-label">Walkability</span>
+        <div class="s-bar-bg"><div class="s-bar" style="width:92%"></div></div>
+        <span class="s-val">92</span>
+      </div>
+      <div class="score-bar">
+        <span class="s-label">Transit</span>
+        <div class="s-bar-bg"><div class="s-bar" style="width:85%;background:var(--accent)"></div></div>
+        <span class="s-val">85</span>
+      </div>
+      <div class="score-bar">
+        <span class="s-label">Restaurants</span>
+        <div class="s-bar-bg"><div class="s-bar" style="width:97%"></div></div>
+        <span class="s-val">97</span>
+      </div>
+      <div class="score-bar">
+        <span class="s-label">Tourism POIs</span>
+        <div class="s-bar-bg"><div class="s-bar" style="width:88%"></div></div>
+        <span class="s-val">88</span>
+      </div>
+      <div class="score-bar">
+        <span class="s-label">Competition</span>
+        <div class="s-bar-bg"><div class="s-bar" style="width:61%;background:var(--yellow)"></div></div>
+        <span class="s-val">61</span>
+      </div>
+
+      <div class="section-label" style="margin:12px 0 8px">SHAP Breakdown</div>
+
+      <div class="shap-row">
+        <div class="shap-label"><span>Walk Score</span><span style="color:var(--accent2)">+€18</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar pos" style="width:100%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Restaurants</span><span style="color:var(--accent2)">+€14</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar pos" style="width:78%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Competition</span><span style="color:var(--red)">−€9</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar neg" style="width:50%"></div></div>
+      </div>
+      <div class="shap-row">
+        <div class="shap-label"><span>Metro Access</span><span style="color:var(--accent2)">+€7</span></div>
+        <div class="shap-bar-bg"><div class="shap-bar pos" style="width:39%"></div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Hex grid generator ──
+const hexMap = document.getElementById('hex-overlay');
+const tooltip = document.getElementById('tooltip');
+
+const MODES = {
+  price:     { title:'Predicted Nightly Price (€)', min:'€30', mid:'€90', max:'€200+', grad:'linear-gradient(90deg,#2196F3,#4CAF50,#FFEB3B,#FF5722)' },
+  occupancy: { title:'Occupancy Rate', min:'30%', mid:'65%', max:'95%', grad:'linear-gradient(90deg,#1a237e,#7b1fa2,#e91e63,#ff9800)' },
+  revenue:   { title:'Est. Monthly Revenue (€)', min:'€400', mid:'€1,400', max:'€3,000+', grad:'linear-gradient(90deg,#004d40,#00897b,#80cbc4,#e0f2f1)' },
+  shap:      { title:'SHAP Impact Score', min:'−0.5', mid:'0', max:'+0.5', grad:'linear-gradient(90deg,#c62828,#888,#1565c0)' },
+};
+
+let currentMode = 'price';
+
+function setMode(el, mode) {
+  document.querySelectorAll('.layer-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  currentMode = mode;
+  const m = MODES[mode];
+  document.getElementById('legend-title').textContent = m.title;
+  document.getElementById('legend-gradient').style.background = m.grad;
+  document.getElementById('leg-min').textContent = m.min;
+  document.getElementById('leg-mid').textContent = m.mid;
+  document.getElementById('leg-max').textContent = m.max;
+  renderHexes();
+}
+
+// Color interpolation: cold→hot
+function priceColor(t) {
+  // blue → green → yellow → red
+  const stops = [
+    [33, 101, 219],  // blue
+    [76, 175, 80],   // green
+    [255, 235, 59],  // yellow
+    [255, 87, 34],   // red-orange
+  ];
+  t = Math.max(0, Math.min(1, t));
+  const seg = t * (stops.length - 1);
+  const i = Math.floor(seg);
+  const f = seg - i;
+  const a = stops[Math.min(i, stops.length-1)];
+  const b = stops[Math.min(i+1, stops.length-1)];
+  const r = Math.round(a[0]+(b[0]-a[0])*f);
+  const g = Math.round(a[1]+(b[1]-a[1])*f);
+  const bl = Math.round(a[2]+(b[2]-a[2])*f);
+  return `rgba(${r},${g},${bl},0.75)`;
+}
+
+function hexPoints(cx, cy, r) {
+  const pts = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 180) * (60 * i - 30);
+    pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+  }
+  return pts.map(p => p.join(',')).join(' ');
+}
+
+const SEED_DATA = [
+  // [cx, cy, price_t, occ, rev, listings, name]
+  [225,170,.85,78,2540,31,'Bonfim'],
+  [300,130,.92,82,2820,28,'Baixa'],
+  [370,150,.97,84,3100,45,'Ribeira'],
+  [440,180,.93,80,2690,38,'Sé'],
+  [510,210,.78,72,2200,22,'Miragaia'],
+  [150,200,.62,65,1750,18,'Campanhã'],
+  [270,230,.70,68,1940,24,'Bolhão'],
+  [340,260,.75,70,2080,29,'Boavista'],
+  [410,290,.88,76,2430,33,'Cedofeita'],
+  [480,260,.80,73,2310,27,'Massarelos'],
+  [550,240,.71,67,1980,19,'Lordelo'],
+  [175,280,.55,61,1610,15,'Paranhos'],
+  [250,310,.60,63,1700,17,'Aldoar'],
+  [320,340,.65,64,1830,20,'Ramalde'],
+  [390,360,.72,68,2020,23,'Foz do Douro'],
+  [460,330,.68,66,1900,21,'Nevogilde'],
+  [530,300,.59,62,1640,14,'Matosinhos'],
+  [600,270,.50,58,1450,11,'Leça'],
+  [200,360,.45,55,1320,9,'Gondomar'],
+  [620,190,.63,64,1780,16,'Mafamude'],
+  [680,220,.55,60,1550,13,'Oliveira'],
+  [140,130,.48,56,1380,10,'Santo Ildefonso'],
+  [580,340,.42,53,1240,8,'Pedrouços'],
+  [350,400,.38,50,1100,7,'Afurada'],
+  [430,420,.35,48,980,6,'Canelas'],
+];
+
+let animT = 0;
+
+function renderHexes() {
+  hexMap.innerHTML = '';
+  const W = hexMap.viewBox.baseVal.width;
+  const H = hexMap.viewBox.baseVal.height;
+
+  SEED_DATA.forEach(([cx, cy, pt, occ, rev, lst, name], i) => {
+    // Scatter sub-hexes around center
+    const cluster = [[0,0,1],[1,0,.7],[-1,0,.65],[0,1,.75],[0,-1,.7],[1,1,.5],[-1,-1,.45]];
+    cluster.forEach(([dx, dy, scale]) => {
+      const r = 42;
+      const x = cx + dx * r * 1.75;
+      const y = cy + dy * r * 1.55;
+      // Add slight variation
+      const noise = (Math.sin(i*7.3+dx*3+dy*5) * 0.5 + 0.5) * 0.25;
+      const t = Math.max(0, Math.min(1, pt - noise + (currentMode==='occupancy'?noise*0.4:0)));
+      const color = priceColor(t);
+
+      const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      poly.setAttribute('points', hexPoints(x, y, r * 0.95));
+      poly.setAttribute('fill', color);
+      poly.setAttribute('stroke', 'rgba(255,255,255,0.08)');
+      poly.setAttribute('stroke-width', '1');
+      poly.style.cursor = 'pointer';
+      poly.style.transition = 'opacity .2s';
+
+      // Pulse animation on top hexes
+      if (dx===0 && dy===0) {
+        poly.style.filter = 'brightness(1.1)';
+      }
+
+      poly.addEventListener('mouseenter', (e) => {
+        poly.setAttribute('stroke','rgba(255,255,255,0.6)');
+        poly.setAttribute('stroke-width','2');
+        tooltip.style.display = 'block';
+        const price = Math.round(60 + pt * 150);
+        const occP = Math.round(occ + (Math.random()*6-3));
+        const revV = Math.round(price * occP / 100 * 30);
+        document.getElementById('tt-price').textContent = '€' + price;
+        document.getElementById('tt-occ').textContent = occP + '%';
+        document.getElementById('tt-rev').textContent = '€' + revV.toLocaleString();
+        document.getElementById('tt-lst').textContent = lst;
+      });
+      poly.addEventListener('mousemove', (e) => {
+        const rect = hexMap.closest('.map-wrap').getBoundingClientRect();
+        const tx = e.clientX - rect.left + 12;
+        const ty = e.clientY - rect.top + 12;
+        tooltip.style.left = Math.min(tx, rect.width - 200) + 'px';
+        tooltip.style.top = ty + 'px';
+      });
+      poly.addEventListener('mouseleave', () => {
+        poly.setAttribute('stroke','rgba(255,255,255,0.08)');
+        poly.setAttribute('stroke-width','1');
+        tooltip.style.display = 'none';
+      });
+
+      hexMap.appendChild(poly);
+    });
+  });
+
+  // Scatter dots (listings)
+  SEED_DATA.forEach(([cx, cy, pt, occ, rev, lst, name]) => {
+    for (let i = 0; i < Math.min(lst, 8); i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const rad = 20 + Math.random() * 30;
+      const dx = Math.cos(angle) * rad;
+      const dy = Math.sin(angle) * rad;
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx', cx + dx);
+      dot.setAttribute('cy', cy + dy);
+      dot.setAttribute('r', '3');
+      dot.setAttribute('fill', 'rgba(255,255,255,0.55)');
+      dot.setAttribute('stroke', 'rgba(255,255,255,0.2)');
+      dot.setAttribute('stroke-width', '0.5');
+      hexMap.appendChild(dot);
+    }
+  });
+}
+
+renderHexes();
+
+// Pulse animation
+let phase = 0;
+setInterval(() => {
+  phase += 0.05;
+  const hexes = hexMap.querySelectorAll('polygon');
+  hexes.forEach((h, i) => {
+    if (i % 7 === 0) {
+      const brightness = 1.0 + 0.12 * Math.sin(phase + i * 0.4);
+      h.style.filter = `brightness(${brightness})`;
+    }
+  });
+}, 80);
+</script>
+</body>
+</html>

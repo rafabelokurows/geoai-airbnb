@@ -33,7 +33,7 @@ def opportunities(
     )
     return [
         OpportunityListing(
-            listing_id=int(row["id"]),
+            listing_id=str(int(row["id"])),
             latitude=float(row["latitude"]),
             longitude=float(row["longitude"]),
             actual_price=float(row["price"]),

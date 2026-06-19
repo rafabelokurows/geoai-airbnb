@@ -13,6 +13,19 @@ body {
   height: 100vh;
 }
 
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+}
+
+.map-area {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
 .kpi-bar {
   display: flex;
   gap: 24px;
@@ -44,6 +57,9 @@ body {
 .map-container {
   flex: 1;
   position: relative;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .layer-controls {
@@ -94,3 +110,163 @@ body {
 .detail-panel .close-btn:hover { color: #f1f5f9; }
 
 .waterfall-label { font-size: 11px; color: #94a3b8; }
+
+/* Analytics sidebar */
+.analytics-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: #12141e;
+  border-right: 1px solid #2d3148;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 14px 16px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  border-bottom: 1px solid #1e2130;
+}
+
+.sidebar-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid #1e2130;
+}
+
+.sidebar-section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.sidebar-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.sidebar-stat-label {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.sidebar-stat-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.sidebar-top-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.sidebar-top-rank {
+  color: #3b5bdb;
+  font-weight: 700;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.sidebar-top-cell {
+  color: #64748b;
+  flex: 1;
+  font-family: monospace;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-top-val {
+  color: #e2e8f0;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sidebar-top-suffix {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.sidebar-hint {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.sidebar-shap {
+  flex: 1;
+}
+
+.shap-row {
+  margin-bottom: 8px;
+}
+
+.shap-label-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.shap-feat {
+  font-size: 11px;
+  color: #cbd5e1;
+  text-transform: capitalize;
+}
+
+.shap-val {
+  font-size: 11px;
+  color: #22c55e;
+}
+
+.shap-bar-bg {
+  background: #1e2130;
+  border-radius: 3px;
+  height: 5px;
+  overflow: hidden;
+}
+
+.shap-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #6c63ff, #00d9a3);
+  transition: width 0.4s ease;
+}
+
+/* Hex detail stats grid */
+.hex-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.hex-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hex-stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.hex-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f1f5f9;
+}

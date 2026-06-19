@@ -72,7 +72,7 @@ def load_app_state(db_path: Path = DB_PATH) -> None:
         .group_by("h3_cell_r8")
         .agg(pl.col("estimated_annual_revenue").mean().alias("avg_revenue"))
     )
-    hex_df = hex_raw.join(hex_revenue, left_on="h3_cell", right_on="h3_cell_r8", how="left")
+    hex_df = hex_raw.join(hex_revenue, on="h3_cell_r8", how="left")
 
     # SHAP
     price_explainer = build_explainer(price_artifact["model"], X_price)

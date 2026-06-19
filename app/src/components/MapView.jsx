@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import DeckGL from '@deck.gl/react'
-import { H3HexagonLayer } from '@deck.gl/geo-layers'
-import { ScatterplotLayer } from '@deck.gl/layers'
+import { PolygonLayer, ScatterplotLayer } from '@deck.gl/layers'
+import { cellToBoundary } from 'h3-js'
 import Map from 'react-map-gl/maplibre'
-import { fetchHexAggregates, fetchOpportunities } from '../api/client'
+import { fetchOpportunities } from '../api/client'
 import LayerControls from './LayerControls'
 
 const INITIAL_VIEW = {
@@ -18,6 +18,11 @@ function lerpColor(t, low, high) {
   return low.map((c, i) => Math.round(c + t * (high[i] - c)))
 }
 
+function percentile(arr, p) {
+  const sorted = [...arr].sort((a, b) => a - b)
+  return sorted[Math.floor((p / 100) * (sorted.length - 1))]
+}
+
 function hexColor(value, min, max, colorMode) {
   const t = max === min ? 0 : Math.min(1, Math.max(0, (value - min) / (max - min)))
   const alpha = 180
@@ -26,17 +31,25 @@ function hexColor(value, min, max, colorMode) {
   return [...lerpColor(t, [254, 240, 217], [215, 48, 31]), alpha]
 }
 
-export default function MapView({ onListingClick }) {
-  const [hexData, setHexData] = useState([])
+export default function MapView({ hexData, activeLayer, onLayerChange, onHexClick, onListingClick }) {
   const [opportunities, setOpportunities] = useState([])
-  const [activeLayer, setActiveLayer] = useState('price')
   const [viewState, setViewState] = useState(INITIAL_VIEW)
-  const [deckReady, setDeckReady] = useState(false)
 
   useEffect(() => {
-    fetchHexAggregates().then(setHexData).catch(console.error)
     fetchOpportunities(200).then(setOpportunities).catch(console.error)
   }, [])
+
+  const polygonData = useMemo(() => (
+    hexData
+      .map(d => {
+        try {
+          return { ...d, polygon: cellToBoundary(d.h3_cell, true) }
+        } catch {
+          return null
+        }
+      })
+      .filter(d => d?.polygon?.length)
+  ), [hexData])
 
   const buildLayers = useCallback(() => {
     if (activeLayer === 'opportunity') {
@@ -52,25 +65,26 @@ export default function MapView({ onListingClick }) {
             return [...lerpColor(t, [255, 200, 0], [200, 0, 0]), 200]
           },
           pickable: true,
-          onClick: ({ object }) => object && onListingClick(object.listing_id),
+          onClick: ({ object }) => object && onListingClick(object),
           radiusMinPixels: 4,
           radiusMaxPixels: 20,
         }),
       ]
     }
 
-    if (!deckReady || !hexData.length) return []
+    if (!polygonData.length) return []
 
     const valueKey = activeLayer === 'price' ? 'avg_price' : 'avg_revenue'
-    const vals = hexData.map(d => d[valueKey]).filter(Boolean)
-    const min = Math.min(...vals)
-    const max = Math.max(...vals)
+    const vals = polygonData.map(d => d[valueKey]).filter(Number.isFinite)
+    if (!vals.length) return []
+    const min = percentile(vals, 5)
+    const max = percentile(vals, 95)
 
     return [
-      new H3HexagonLayer({
+      new PolygonLayer({
         id: `hex-${activeLayer}`,
-        data: hexData,
-        getHexagon: d => d.h3_cell,
+        data: polygonData,
+        getPolygon: d => d.polygon,
         getFillColor: d => hexColor(d[valueKey] ?? min, min, max, activeLayer),
         getElevation: 0,
         extruded: false,
@@ -79,18 +93,18 @@ export default function MapView({ onListingClick }) {
         pickable: true,
         highPrecision: false,
         coverage: 0.92,
-        onClick: ({ object }) => object && onListingClick(null),
+        onClick: ({ object }) => object && onHexClick(object),
       }),
     ]
-  }, [activeLayer, hexData, opportunities, onListingClick, deckReady])
+  }, [activeLayer, polygonData, opportunities, onHexClick, onListingClick])
 
   return (
     <div className="map-container">
-      <LayerControls active={activeLayer} onChange={setActiveLayer} />
+      <LayerControls active={activeLayer} onChange={onLayerChange} />
       <DeckGL
+        style={{ position: 'absolute', inset: 0 }}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(vs)}
-        onAfterRender={() => !deckReady && setDeckReady(true)}
         controller={true}
         layers={buildLayers()}
         getTooltip={({ object }) => {
@@ -102,6 +116,7 @@ export default function MapView({ onListingClick }) {
         }}
       >
         <Map
+          style={{ width: '100%', height: '100%' }}
           mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
         />
       </DeckGL>

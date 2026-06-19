@@ -63,9 +63,14 @@ def run_predictions(db_path: Path = DB_PATH) -> None:
         """).arrow())
 
     id_order = {v: i for i, v in enumerate(listing_ids)}
-    meta = meta.with_columns(
-        pl.Series("_order", [id_order.get(i, 999999) for i in meta["listing_id"].to_list()])
-    ).sort("_order").drop("_order")
+    meta = (
+        meta.filter(pl.col("listing_id").is_in(listing_ids))
+        .with_columns(
+            pl.Series("_order", [id_order[i] for i in meta.filter(pl.col("listing_id").is_in(listing_ids))["listing_id"].to_list()])
+        )
+        .sort("_order")
+        .drop("_order")
+    )
 
     preds_df = pl.DataFrame({
         "listing_id": listing_ids,

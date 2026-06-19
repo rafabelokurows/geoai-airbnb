@@ -8,7 +8,7 @@ from geoai.config import RAW_AIRBNB_DIR, DB_PATH, AIRBNB_PORTO_URL
 from geoai.database.warehouse import init_warehouse
 
 _KEEP_COLS = [
-    "id", "name", "latitude", "longitude", "neighbourhood_cleansed",
+    "id", "name", "description", "latitude", "longitude", "neighbourhood_cleansed",
     "room_type", "property_type", "accommodates", "bedrooms", "beds",
     "price", "minimum_nights", "maximum_nights",
     "availability_30", "availability_60", "availability_90", "availability_365",
