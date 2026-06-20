@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from 'react'
-import { fetchGlobalExplain } from '../api/client'
+import { fetchNeighbourhoods } from '../api/client'
 
 const LAYER_META = {
   price: { label: 'Price Heatmap', key: 'avg_price', unit: '€', suffix: '/night' },
@@ -21,12 +21,12 @@ function fmt(n, decimals = 0) {
   return new Intl.NumberFormat('en-GB', { maximumFractionDigits: decimals }).format(n)
 }
 
-export default function AnalyticsSidebar({ hexData, activeLayer }) {
+export default function AnalyticsSidebar({ hexData, activeLayer, shapImportance }) {
   const meta = LAYER_META[activeLayer]
-  const [shapImportance, setShapImportance] = useState([])
+  const [neighbourhoods, setNeighbourhoods] = useState([])
 
   useEffect(() => {
-    fetchGlobalExplain(10).then(setShapImportance).catch(console.error)
+    fetchNeighbourhoods().then(setNeighbourhoods).catch(console.error)
   }, [])
 
   const stats = useMemo(() => {
@@ -45,9 +45,12 @@ export default function AnalyticsSidebar({ hexData, activeLayer }) {
     hexData.reduce((s, d) => s + (d.listing_count || 0), 0)
   ), [hexData])
 
-  const maxImportance = shapImportance.length
-    ? shapImportance[0].importance
-    : 1
+  const cityAvgPrice = useMemo(() => {
+    const prices = hexData.map(d => d.avg_price).filter(Number.isFinite)
+    return prices.length ? mean(prices) : 100
+  }, [hexData])
+
+  const maxImportance = shapImportance.length ? shapImportance[0].importance : 1
 
   return (
     <div className="analytics-sidebar">
@@ -94,24 +97,53 @@ export default function AnalyticsSidebar({ hexData, activeLayer }) {
 
       {shapImportance.length > 0 && (
         <div className="sidebar-section sidebar-shap">
-          <div className="sidebar-section-title">SHAP · Top Price Drivers</div>
+          <div className="sidebar-section-title">Top Price Drivers (SHAP)</div>
           {shapImportance.map(({ feature, importance }) => {
-            const pct = maxImportance > 0 ? (importance / maxImportance) * 100 : 0
+            const barPct = maxImportance > 0 ? (importance / maxImportance) * 100 : 0
+            const eurImpact = cityAvgPrice * (Math.exp(importance) - 1)
             return (
               <div key={feature} className="shap-row">
                 <div className="shap-label-row">
                   <span className="shap-feat">{feature.replace(/_/g, ' ')}</span>
-                  <span className="shap-val">+{importance.toFixed(3)}</span>
+                  <span className="shap-val">+€{fmt(eurImpact, 0)}/night</span>
                 </div>
                 <div className="shap-bar-bg">
-                  <div className="shap-bar-fill" style={{ width: `${pct}%` }} />
+                  <div className="shap-bar-fill" style={{ width: `${barPct}%` }} />
                 </div>
               </div>
             )
           })}
           <p className="sidebar-hint" style={{ marginTop: 8 }}>
-            Mean |SHAP| across 500 listings
+            Mean |SHAP| across 500 listings · EUR impact approx.
           </p>
+        </div>
+      )}
+
+      {neighbourhoods.length > 0 && (
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">Neighbourhoods by Revenue</div>
+          <div style={{ overflowY: 'auto', maxHeight: 220 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', paddingBottom: 4, color: '#94a3b8' }}>#</th>
+                  <th style={{ textAlign: 'left', paddingBottom: 4, color: '#94a3b8' }}>Area</th>
+                  <th style={{ textAlign: 'right', paddingBottom: 4, color: '#94a3b8' }}>Avg Rev/yr</th>
+                  <th style={{ textAlign: 'right', paddingBottom: 4, color: '#94a3b8' }}>Listings</th>
+                </tr>
+              </thead>
+              <tbody>
+                {neighbourhoods.slice(0, 20).map((n, i) => (
+                  <tr key={n.neighbourhood} style={{ borderTop: '1px solid #1e293b' }}>
+                    <td style={{ padding: '3px 0', color: '#475569' }}>{i + 1}</td>
+                    <td style={{ padding: '3px 4px', color: '#cbd5e1', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.neighbourhood}</td>
+                    <td style={{ textAlign: 'right', color: '#34d399' }}>€{fmt(n.avg_revenue)}</td>
+                    <td style={{ textAlign: 'right', color: '#94a3b8' }}>{fmt(n.listing_count)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

@@ -36,3 +36,15 @@ export async function fetchGlobalExplain(topN = 10) {
   if (!r.ok) throw new Error('Failed to fetch global SHAP importance')
   return r.json()
 }
+
+export async function fetchNeighbourhoods() {
+  const r = await fetch(`${BASE}/neighbourhoods`)
+  if (!r.ok) throw new Error('Failed to fetch neighbourhoods')
+  return r.json()
+}
+
+export async function fetchHexListings(h3Cell) {
+  const r = await fetch(`${BASE}/hex/${encodeURIComponent(h3Cell)}/listings`)
+  if (!r.ok) throw new Error(`Failed to fetch listings for hex ${h3Cell}`)
+  return r.json()
+}
