@@ -8,6 +8,7 @@
 | [004](004-haversine-over-postgis.md) | Vectorized Haversine for Proximity Calculations | Accepted |
 | [005](005-lightgbm-for-ml-models.md) | LightGBM for Price and Occupancy Models | Accepted |
 | [006](006-fastapi-for-api-layer.md) | FastAPI for the Read-Only Prediction API | Accepted |
+| [007](007-analytics-narratives-frontend.md) | Analytics Narratives — Hybrid Frontend/Backend Approach | Accepted |
 
 ---
 
