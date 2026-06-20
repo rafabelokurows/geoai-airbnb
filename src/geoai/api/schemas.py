@@ -62,3 +62,14 @@ class ExplainResponse(BaseModel):
 class FeatureImportance(BaseModel):
     feature: str
     importance: float
+
+
+class NeighbourhoodRank(BaseModel):
+    neighbourhood: str
+    listing_count: int
+    avg_revenue: float
+
+
+class HexListing(BaseModel):
+    price: float | None
+    predicted_occupancy: float | None

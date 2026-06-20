@@ -55,7 +55,7 @@ def load_app_state(db_path: Path = DB_PATH) -> None:
     with duckdb.connect(str(db_path), read_only=True) as con:
         listings_raw = pl.from_arrow(con.execute("""
             SELECT l.id, l.latitude, l.longitude, l.price, l.room_type,
-                   lf.h3_cell_r8
+                   l.neighbourhood, lf.h3_cell_r8
             FROM listings l
             LEFT JOIN listing_features lf ON l.id = lf.listing_id
         """).arrow())
