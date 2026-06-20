@@ -5,24 +5,48 @@
 - Expanded remaining groups + added 8 description keyword features
 - Price RMSE: 54.32 → 53.59 (-1.3%)
 
-## 2. Per-Room-Type Models
-Currently one shared LightGBM for all room types; `room_type` enters as one-hot dummies.
-Private rooms and entire places have different occupancy dynamics — separate models could improve MAE (currently stuck at 0.164, target <0.15).
+## 2. Per-Room-Type Models (DEFERRED — user deprioritised)
+Currently one shared LightGBM for all room types. Occupancy MAE 0.164 vs target 0.15.
+See original notes if revisited.
 
-- Train one price model + one occupancy model per main room type:
-  - `Entire home/apt` (~10k listings — enough data)
-  - `Private room` (~1.5k listings)
-  - `Hotel room` (~370 listings — may need to merge with Private room)
-- Refactor `src/geoai/models/price.py` + `occupancy.py` to accept a filtered DataFrame
-- Refactor `src/geoai/models/evaluate.py` to loop over room types and report per-type RMSE/MAE
-- Update `src/geoai/models/predict.py` to route each listing through its room-type model
-- Update SHAP pipeline in `src/geoai/explainability/shap_explainer.py` to hold one explainer per model
-- Compare aggregate RMSE/MAE vs current single-model baseline
+## 3. Analytics Narratives ✓ DONE
+- Opportunity score per hex (frontend computed)
+- Template-based hex narrative in HexDetail
+- Neighbourhood ranking table in AnalyticsSidebar (top 20, scrollable)
+- Per-hex occupancy vs price scatter in HexDetail (inline SVG)
+- SHAP bars with EUR annotation — top 15 in sidebar, top 10 in HexDetail
 
-## 3. More Analytics + Narratives
-- Add narrative text to AnalyticsSidebar: "Listings in this hex earn X% more than city average"
-- Opportunity score: combine high revenue + low competition into a single hex score
-- Top amenities by impact: "Having a pool adds ~€X/night on average" (from SHAP)
-- Neighbourhood comparison table: rank all neighbourhoods by avg_revenue
-- Occupancy vs price scatter per hex (are high-price hexes actually occupied?)
-- Narrative on hex click: auto-generate 2-3 sentence summary of why that hex is/isn't a good opportunity
+## 4. Blog Post Headlines (DATA-BACKED)
+
+Use the SHAP feature importance values and median revenue data already in the app
+to write 5–8 catchy, data-backed blog post headlines for an Airbnb host audience.
+Examples of angle:
+- "The one amenity that adds €X/night to your Airbnb price (according to AI)"
+- "Why Airbnb hosts in [top neighbourhood] earn 2× the city median"
+- "High price, low occupancy: the Airbnb trap killing your ROI"
+- Pull the actual numbers from `/api/explain/global` and `/api/neighbourhoods`
+  to make claims concrete and non-generic.
+
+## 5. Static Pre-Computation for Frontend-Only Deployment
+
+Goal: eliminate the Python backend at deploy time. Pre-compute everything to
+static JSON files that the React frontend can fetch from a CDN or GitHub Pages.
+
+What to pre-compute:
+- `public/data/kpis.json` — KPI snapshot
+- `public/data/hex-aggregates.json` — all hex cells with opportunity_score
+- `public/data/neighbourhoods.json` — neighbourhood ranking
+- `public/data/explain-global.json` — top 15 SHAP features with EUR labels
+- `public/data/hex/{h3_cell}.json` — per-hex listing scatter data (one file per cell,
+  ~672 files at resolution 8)
+- `public/data/listings/{id}.json` — per-listing SHAP explain (lazy, generate top 500
+  opportunity listings only)
+
+Build script: `scripts/export_static.py` — runs the full pipeline, writes all JSON,
+exits. CI can run this once on data refresh; frontend reads from `/data/` prefix.
+
+Frontend change: swap `fetch('/api/...')` calls in `client.js` to `fetch('/data/...')`
+when `VITE_STATIC_MODE=true` env var is set. Zero React component changes needed.
+
+Deployment: Vite build → `dist/` → push to GitHub Pages or Cloudflare Pages.
+No server required.
