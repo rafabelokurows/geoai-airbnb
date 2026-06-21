@@ -48,3 +48,15 @@ export async function fetchHexListings(h3Cell) {
   if (!r.ok) throw new Error(`Failed to fetch listings for hex ${h3Cell}`)
   return r.json()
 }
+
+export async function fetchPriceGap(topN = 50) {
+  const r = await fetch(`${BASE}/price-gap?top_n=${topN}`)
+  if (!r.ok) throw new Error('Failed to fetch price gap data')
+  return r.json()
+}
+
+export async function fetchHexPriceGap(h3Cell) {
+  const r = await fetch(`${BASE}/hex/${encodeURIComponent(h3Cell)}/price-gap`)
+  if (!r.ok) throw new Error(`Failed to fetch price gap for hex ${h3Cell}`)
+  return r.json()
+}

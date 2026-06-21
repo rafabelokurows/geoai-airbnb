@@ -20,7 +20,7 @@ function fmt(n, decimals = 0) {
   return new Intl.NumberFormat('en-GB', { maximumFractionDigits: decimals }).format(n)
 }
 
-export default function AnalyticsSidebar({ hexData, activeLayer, shapImportance }) {
+export default function AnalyticsSidebar({ hexData, activeLayer, shapImportance, priceGapData }) {
   const meta = LAYER_META[activeLayer]
 
   const stats = useMemo(() => {
@@ -86,6 +86,51 @@ export default function AnalyticsSidebar({ hexData, activeLayer, shapImportance 
           <p className="sidebar-hint">
             Orange dots = underpriced listings (&gt;15% below predicted). Click a dot to see SHAP drivers.
           </p>
+        </div>
+      )}
+
+      {priceGapData && (
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">Price Gap Analysis</div>
+          <div className="sidebar-stat-row">
+            <span className="sidebar-stat-label" style={{ color: '#22c55e' }}>Underpriced</span>
+            <span className="sidebar-stat-value">{fmt(priceGapData.underpriced.length)} listings</span>
+          </div>
+          <div className="sidebar-stat-row">
+            <span className="sidebar-stat-label" style={{ color: '#ef4444' }}>Overpriced</span>
+            <span className="sidebar-stat-value">{fmt(priceGapData.overpriced.length)} listings</span>
+          </div>
+          {priceGapData.segment_summary.filter(s => s.segment_type === 'room_type').length > 0 && (
+            <>
+              <div className="sidebar-section-title" style={{ marginTop: 10 }}>By Room Type</div>
+              <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ color: '#64748b' }}>
+                    <th style={{ textAlign: 'left', paddingBottom: 4, fontWeight: 500 }}>Type</th>
+                    <th style={{ textAlign: 'right', paddingBottom: 4, fontWeight: 500 }}>Under</th>
+                    <th style={{ textAlign: 'right', paddingBottom: 4, fontWeight: 500 }}>Over</th>
+                    <th style={{ textAlign: 'right', paddingBottom: 4, fontWeight: 500 }}>Med gap</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {priceGapData.segment_summary
+                    .filter(s => s.segment_type === 'room_type')
+                    .map(s => (
+                      <tr key={s.segment_value} style={{ borderTop: '1px solid #1e2030' }}>
+                        <td style={{ paddingTop: 4, paddingBottom: 4, color: '#cbd5e1', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {s.segment_value}
+                        </td>
+                        <td style={{ textAlign: 'right', color: '#22c55e' }}>{s.underpriced_count}</td>
+                        <td style={{ textAlign: 'right', color: '#ef4444' }}>{s.overpriced_count}</td>
+                        <td style={{ textAlign: 'right', color: '#94a3b8' }}>
+                          {(s.median_gap_pct * 100).toFixed(0)}%
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
       )}
 

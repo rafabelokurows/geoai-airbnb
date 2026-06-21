@@ -53,6 +53,11 @@ export default function ListingDetail({ opportunity, onClose }) {
           <span className="hex-stat-label">Gap/night</span>
           <span className="hex-stat-value" style={{ color: '#fbbf24' }}>
             +€{fmt(opportunity.opportunity_gap)}
+            {opportunity.actual_price > 0 && opportunity.predicted_price > 0 && (
+              <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 4 }}>
+                ({(((opportunity.predicted_price - opportunity.actual_price) / opportunity.predicted_price) * 100).toFixed(0)}% below)
+              </span>
+            )}
           </span>
         </div>
         <div className="hex-stat">

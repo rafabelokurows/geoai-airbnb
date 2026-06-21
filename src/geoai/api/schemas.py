@@ -73,3 +73,33 @@ class NeighbourhoodRank(BaseModel):
 class HexListing(BaseModel):
     price: float | None
     predicted_occupancy: float | None
+
+
+class PriceGapListing(BaseModel):
+    listing_id: str
+    latitude: float
+    longitude: float
+    actual_price: float
+    predicted_price: float
+    price_gap_pct: float
+    opportunity_gap: float
+    estimated_uplift_annual: float
+    room_type: str | None
+    neighbourhood: str | None
+    direction: str
+
+
+class SegmentRow(BaseModel):
+    segment_type: str
+    segment_value: str
+    total_listings: int
+    underpriced_count: int
+    overpriced_count: int
+    fair_count: int
+    median_gap_pct: float
+
+
+class PriceGapResponse(BaseModel):
+    underpriced: list[PriceGapListing]
+    overpriced: list[PriceGapListing]
+    segment_summary: list[SegmentRow]

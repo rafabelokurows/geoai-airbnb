@@ -20,7 +20,15 @@
 - Per-hex occupancy vs price scatter in HexDetail (inline SVG)
 - SHAP bars with EUR annotation — top 15 in sidebar, top 10 in HexDetail
 
-## 4. Blog Post Headlines (DATA-BACKED)
+## 4. Underpriced / Overpriced Listing Analysis ✓ DONE
+
+- `POST /api/price-gap` — city-wide top N underpriced + overpriced, segment summary by room type and neighbourhood
+- `GET /api/hex/{h3_cell}/price-gap` — per-hex top 10 underpriced + top 10 overpriced, sorted by |gap %|
+- AnalyticsSidebar: "Price Gap Analysis" section — city-wide counts + room-type breakdown table
+- HexDetail: "Overview | Price Gap (N)" tabs — per-hex listing rows with actual/predicted/gap % and "View listing ↗" link to airbnb.com/rooms/{id}
+- ListingDetail: gap % shown inline on gap/night stat
+
+## 5. Blog Post Headlines (DATA-BACKED)
 
 Use the SHAP feature importance values and median revenue data already in the app
 to write 5–8 catchy, data-backed blog post headlines for an Airbnb host audience.
@@ -31,7 +39,7 @@ Examples of angle:
 - Pull the actual numbers from `/api/explain/global` and `/api/neighbourhoods`
   to make claims concrete and non-generic.
 
-## 5. Static Pre-Computation for Frontend-Only Deployment
+## 6. Static Pre-Computation for Frontend-Only Deployment
 
 Goal: eliminate the Python backend at deploy time. Pre-compute everything to
 static JSON files that the React frontend can fetch from a CDN or GitHub Pages.
@@ -45,6 +53,8 @@ What to pre-compute:
   ~672 files at resolution 8)
 - `public/data/listings/{id}.json` — per-listing SHAP explain (lazy, generate top 500
   opportunity listings only)
+- `public/data/price-gap.json` — city-wide price gap snapshot
+- `public/data/hex/{h3_cell}/price-gap.json` — per-hex price gap (top 10 each)
 
 Build script: `scripts/export_static.py` — runs the full pipeline, writes all JSON,
 exits. CI can run this once on data refresh; frontend reads from `/data/` prefix.

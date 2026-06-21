@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from geoai.api.deps import load_app_state
-from geoai.api.routes import explain, health, hex, kpis, listings, neighbourhoods, opportunities
+from geoai.api.routes import explain, health, hex, kpis, listings, neighbourhoods, opportunities, price_gap
 
 
 @asynccontextmanager
@@ -29,6 +29,7 @@ def create_app(load_state: bool = True) -> FastAPI:
     app.include_router(neighbourhoods.router, prefix="/api")
     app.include_router(opportunities.router, prefix="/api")
     app.include_router(explain.router, prefix="/api")
+    app.include_router(price_gap.router, prefix="/api")
     return app
 
 

@@ -4,7 +4,7 @@ import MapView from './components/MapView'
 import ListingDetail from './components/ListingDetail'
 import HexDetail from './components/HexDetail'
 import AnalyticsSidebar from './components/AnalyticsSidebar'
-import { fetchHexAggregates, fetchGlobalExplain } from './api/client'
+import { fetchHexAggregates, fetchGlobalExplain, fetchPriceGap } from './api/client'
 
 function normalize(val, min, max) {
   if (max === min) return 0
@@ -17,10 +17,12 @@ export default function App() {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null)
   const [selectedHex, setSelectedHex] = useState(null)
   const [shapImportance, setShapImportance] = useState([])
+  const [priceGapData, setPriceGapData] = useState(null)
 
   useEffect(() => {
     fetchHexAggregates().then(setHexData).catch(console.error)
     fetchGlobalExplain(15).then(setShapImportance).catch(console.error)
+    fetchPriceGap(50).then(setPriceGapData).catch(console.error)
   }, [])
 
   const enrichedHexData = useMemo(() => {
@@ -66,6 +68,7 @@ export default function App() {
           hexData={enrichedHexData}
           activeLayer={activeLayer}
           shapImportance={shapImportance}
+          priceGapData={priceGapData}
         />
         <div className="map-area">
           <MapView
