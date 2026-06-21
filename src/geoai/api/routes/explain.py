@@ -28,8 +28,10 @@ def explain(listing_id: int, state: AppState = Depends(get_state)) -> ExplainRes
     idx = state.listing_id_to_idx.get(listing_id)
     if idx is None:
         raise HTTPException(status_code=404, detail=f"Listing {listing_id} not found or has no predictions")
+    group = state.listing_id_to_group.get(listing_id, "Entire home/apt")
+    explainer = state.price_explainers.get(group, state.price_explainer)
     result = explain_listing(
-        state.price_explainer,
+        explainer,
         state.X_price[idx],
         state.price_features,
         top_n=5,

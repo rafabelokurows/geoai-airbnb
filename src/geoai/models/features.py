@@ -128,7 +128,7 @@ DESC_KEYWORD_GROUPS: dict[str, list[str]] = {
 DESC_KW_COLS = list(DESC_KEYWORD_GROUPS.keys())
 
 NUMERIC_FEATURE_COLS = [
-    "accommodates", "bedrooms", "beds", "minimum_nights",
+    "accommodates", "bedrooms", "beds",
     "review_scores_rating", "host_is_superhost", "number_of_reviews",
     "dist_city_center_km", "dist_nearest_metro_km", "dist_nearest_station_km",
     "dist_nearest_supermarket_km", "dist_airport_km", "travel_time_airport_min",
@@ -226,20 +226,32 @@ def build_feature_matrix(db_path: Path = DB_PATH) -> pl.DataFrame:
     return pl.concat([base.drop(["amenities", "name", "description"]), amenity_flags, desc_flags], how="horizontal")
 
 
+_ENTIRE_HOME = "Entire home/apt"
+
+
+def split_by_room_type(df: pl.DataFrame) -> dict[str, pl.DataFrame]:
+    """Two groups: 'Entire home/apt' and 'other' (all remaining room types)."""
+    entire = df.filter(pl.col("room_type") == _ENTIRE_HOME)
+    other = df.filter(pl.col("room_type") != _ENTIRE_HOME)
+    groups = {}
+    if len(entire) > 0:
+        groups[_ENTIRE_HOME] = entire
+    if len(other) > 0:
+        groups["other"] = other
+    return groups
+
+
 def prepare_X_y_price(df: pl.DataFrame) -> tuple[np.ndarray, np.ndarray, list[str]]:
-    room_dummies = df.select("room_type").to_dummies()
-    numeric = df.select(NUMERIC_FEATURE_COLS).fill_null(0)
-    X_df = pl.concat([numeric, room_dummies], how="horizontal")
+    X_df = df.select(NUMERIC_FEATURE_COLS).fill_null(0)
     X = X_df.to_numpy().astype(np.float32)
     y = np.log(df["target_price"].to_numpy().astype(np.float64))
     return X, y, X_df.columns
 
 
 def prepare_X_y_occupancy(df: pl.DataFrame) -> tuple[np.ndarray, np.ndarray, list[str]]:
-    room_dummies = df.select("room_type").to_dummies()
     price_col = df.select(pl.col("target_price").alias("price"))
     numeric = df.select(NUMERIC_FEATURE_COLS).fill_null(0)
-    X_df = pl.concat([numeric, price_col, room_dummies], how="horizontal")
+    X_df = pl.concat([numeric, price_col], how="horizontal")
     X = X_df.to_numpy().astype(np.float32)
     y = df["target_occupancy"].to_numpy().astype(np.float64)
     return X, y, X_df.columns

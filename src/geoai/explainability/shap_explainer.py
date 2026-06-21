@@ -53,6 +53,8 @@ def explain_listing(
 
 
 def run_shap_analysis(db_path: Path = DB_PATH) -> dict:
+    from geoai.models.predict import _room_group
+
     df = build_feature_matrix(db_path)
 
     with open(PRICE_MODEL_PATH, "rb") as f:
@@ -62,20 +64,27 @@ def run_shap_analysis(db_path: Path = DB_PATH) -> dict:
 
     X_price, _, price_features = prepare_X_y_price(df)
     X_occ, _, occ_features = prepare_X_y_occupancy(df)
+    room_types = df["room_type"].to_list()
 
-    price_explainer = build_explainer(price_artifact["model"], X_price)
-    occ_explainer = build_explainer(occ_artifact["model"], X_occ)
+    # Use primary group (Entire home/apt) as representative explainer
+    primary = "Entire home/apt"
+    price_model = price_artifact["models"].get(primary, next(iter(price_artifact["models"].values())))
+    occ_model = occ_artifact["models"].get(primary, next(iter(occ_artifact["models"].values())))
 
-    price_importance = compute_global_importance(price_explainer, X_price, price_features)
-    occ_importance = compute_global_importance(occ_explainer, X_occ, occ_features)
+    mask = np.array([_room_group(r) == _room_group(primary) for r in room_types])
+    price_explainer = build_explainer(price_model, X_price[mask])
+    occ_explainer = build_explainer(occ_model, X_occ[mask])
+
+    price_importance = compute_global_importance(price_explainer, X_price[mask], list(price_features))
+    occ_importance = compute_global_importance(occ_explainer, X_occ[mask], list(occ_features))
 
     return {
         "price_explainer": price_explainer,
         "occupancy_explainer": occ_explainer,
         "price_importance": price_importance,
         "occupancy_importance": occ_importance,
-        "price_feature_names": price_features,
-        "occupancy_feature_names": occ_features,
+        "price_feature_names": list(price_features),
+        "occupancy_feature_names": list(occ_features),
         "X_price": X_price,
         "X_occ": X_occ,
         "listing_ids": df["id"].to_list(),

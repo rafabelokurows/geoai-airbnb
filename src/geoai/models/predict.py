@@ -7,7 +7,12 @@ import polars as pl
 import shap as shap_lib
 
 from geoai.config import DB_PATH
-from geoai.models.features import build_feature_matrix, prepare_X_y_price, prepare_X_y_occupancy
+from geoai.models.features import (
+    _ENTIRE_HOME,
+    build_feature_matrix,
+    prepare_X_y_price,
+    prepare_X_y_occupancy,
+)
 from geoai.models.price import MODEL_PATH as PRICE_MODEL_PATH
 from geoai.models.occupancy import MODEL_PATH as OCCUPANCY_MODEL_PATH
 
@@ -20,6 +25,47 @@ def _load_model(path: Path) -> dict:
         )
     with open(path, "rb") as f:
         return pickle.load(f)
+
+
+def _room_group(room_type: str) -> str:
+    return room_type if room_type == _ENTIRE_HOME else "other"
+
+
+def _route_predict(models_dict: dict, X_all: np.ndarray, room_types: list[str]) -> np.ndarray:
+    """Route each row to its group model; no SHAP."""
+    fallback = _ENTIRE_HOME if _ENTIRE_HOME in models_dict else next(iter(models_dict))
+    preds = np.zeros(len(room_types))
+    for group in {_room_group(rt) for rt in room_types}:
+        model = models_dict.get(group, models_dict[fallback])
+        mask = np.array([_room_group(r) == group for r in room_types])
+        preds[mask] = model.predict(X_all[mask])
+    return preds
+
+
+def _predict_and_shap(
+    models_dict: dict,
+    X_all: np.ndarray,
+    room_types: list[str],
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Route rows to per-group models; return (predictions, shap_vals, weighted_base)."""
+    n, n_feat = X_all.shape
+    preds = np.zeros(n)
+    shap_vals = np.zeros((n, n_feat))
+    base_sum = 0.0
+
+    fallback = _ENTIRE_HOME if _ENTIRE_HOME in models_dict else next(iter(models_dict))
+    groups = {_room_group(rt) for rt in room_types}
+
+    for group in groups:
+        model = models_dict.get(group, models_dict[fallback])
+        mask = np.array([_room_group(r) == group for r in room_types])
+        X_sub = X_all[mask]
+        preds[mask] = model.predict(X_sub)
+        explainer = shap_lib.TreeExplainer(model, data=shap_lib.sample(X_sub, min(100, len(X_sub))))
+        shap_vals[mask] = explainer.shap_values(X_sub)
+        base_sum += float(explainer.expected_value) * mask.sum()
+
+    return preds, shap_vals, base_sum / n
 
 
 def _build_hex_shap_df(
@@ -46,10 +92,15 @@ def run_predictions(db_path: Path = DB_PATH) -> None:
     X_price, _, price_features = prepare_X_y_price(df)
     X_occ, _, occ_features = prepare_X_y_occupancy(df)
 
-    predicted_price = np.exp(price_artifact["model"].predict(X_price)).astype(np.float64)
-    predicted_occupancy = occ_artifact["model"].predict(X_occ).clip(0.0, 1.0).astype(np.float64)
-    predicted_revenue = predicted_price * predicted_occupancy * 30.0
+    room_types = df["room_type"].to_list()
 
+    price_raw, price_shap_vals, price_base = _predict_and_shap(price_artifact["models"], X_price, room_types)
+    predicted_price = np.exp(price_raw).astype(np.float64)
+
+    occ_raw, occ_shap_vals, occ_base = _predict_and_shap(occ_artifact["models"], X_occ, room_types)
+    predicted_occupancy = occ_raw.clip(0.0, 1.0).astype(np.float64)
+
+    predicted_revenue = predicted_price * predicted_occupancy * 30.0
     listing_ids = df["id"].to_list()
 
     with duckdb.connect(str(db_path)) as con:
@@ -81,19 +132,6 @@ def run_predictions(db_path: Path = DB_PATH) -> None:
         "latitude": meta["latitude"].to_list(),
         "longitude": meta["longitude"].to_list(),
     })
-
-    price_explainer = shap_lib.TreeExplainer(
-        price_artifact["model"],
-        data=shap_lib.sample(X_price, min(100, len(X_price))),
-    )
-    occ_explainer = shap_lib.TreeExplainer(
-        occ_artifact["model"],
-        data=shap_lib.sample(X_occ, min(100, len(X_occ))),
-    )
-    price_shap_vals = price_explainer.shap_values(X_price)
-    occ_shap_vals = occ_explainer.shap_values(X_occ)
-    price_base = float(price_explainer.expected_value)
-    occ_base = float(occ_explainer.expected_value)
 
     price_imp = np.abs(price_shap_vals).mean(axis=0)
     occ_imp = np.abs(occ_shap_vals).mean(axis=0)

@@ -6,6 +6,7 @@ import polars as pl
 
 from geoai.config import DB_PATH
 from geoai.models.features import build_feature_matrix, prepare_X_y_price, prepare_X_y_occupancy
+from geoai.models.predict import _route_predict
 from geoai.models.price import MODEL_PATH as PRICE_MODEL_PATH
 from geoai.models.occupancy import MODEL_PATH as OCCUPANCY_MODEL_PATH
 
@@ -18,8 +19,12 @@ def estimate_revenue(db_path: Path = DB_PATH) -> pl.DataFrame:
         occ_artifact = pickle.load(f)
     X_price, _, _ = prepare_X_y_price(df)
     X_occ, _, _ = prepare_X_y_occupancy(df)
-    predicted_price = np.exp(price_artifact["model"].predict(X_price))
-    predicted_occupancy = occ_artifact["model"].predict(X_occ).clip(0, 1)
+    room_types = df["room_type"].to_list()
+
+    price_raw = _route_predict(price_artifact["models"], X_price, room_types)
+    occ_raw = _route_predict(occ_artifact["models"], X_occ, room_types)
+    predicted_price = np.exp(price_raw)
+    predicted_occupancy = occ_raw.clip(0, 1)
     estimated_annual_revenue = predicted_price * predicted_occupancy * 365
     return pl.DataFrame({
         "listing_id": df["id"].to_list(),

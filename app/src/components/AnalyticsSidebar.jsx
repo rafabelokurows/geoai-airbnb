@@ -1,5 +1,4 @@
-import { useMemo, useEffect, useState } from 'react'
-import { fetchNeighbourhoods } from '../api/client'
+import { useMemo } from 'react'
 
 const LAYER_META = {
   price: { label: 'Price Heatmap', key: 'avg_price', unit: '€', suffix: '/night' },
@@ -23,11 +22,6 @@ function fmt(n, decimals = 0) {
 
 export default function AnalyticsSidebar({ hexData, activeLayer, shapImportance }) {
   const meta = LAYER_META[activeLayer]
-  const [neighbourhoods, setNeighbourhoods] = useState([])
-
-  useEffect(() => {
-    fetchNeighbourhoods().then(setNeighbourhoods).catch(console.error)
-  }, [])
 
   const stats = useMemo(() => {
     if (!meta.key || !hexData.length) return null
@@ -119,33 +113,6 @@ export default function AnalyticsSidebar({ hexData, activeLayer, shapImportance 
         </div>
       )}
 
-      {neighbourhoods.length > 0 && (
-        <div className="sidebar-section">
-          <div className="sidebar-section-title">Neighbourhoods by Revenue</div>
-          <div style={{ overflowY: 'auto', maxHeight: 220 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', paddingBottom: 4, color: '#94a3b8' }}>#</th>
-                  <th style={{ textAlign: 'left', paddingBottom: 4, color: '#94a3b8' }}>Area</th>
-                  <th style={{ textAlign: 'right', paddingBottom: 4, color: '#94a3b8' }}>Avg Rev/yr</th>
-                  <th style={{ textAlign: 'right', paddingBottom: 4, color: '#94a3b8' }}>Listings</th>
-                </tr>
-              </thead>
-              <tbody>
-                {neighbourhoods.slice(0, 20).map((n, i) => (
-                  <tr key={n.neighbourhood} style={{ borderTop: '1px solid #1e293b' }}>
-                    <td style={{ padding: '3px 0', color: '#475569' }}>{i + 1}</td>
-                    <td style={{ padding: '3px 4px', color: '#cbd5e1', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.neighbourhood}</td>
-                    <td style={{ textAlign: 'right', color: '#34d399' }}>€{fmt(n.avg_revenue)}</td>
-                    <td style={{ textAlign: 'right', color: '#94a3b8' }}>{fmt(n.listing_count)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

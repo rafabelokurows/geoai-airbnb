@@ -17,13 +17,14 @@ def _make_fake_db(tmp_path: Path) -> Path:
             id BIGINT PRIMARY KEY, latitude DOUBLE, longitude DOUBLE,
             price DOUBLE, accommodates INTEGER, bedrooms DOUBLE, beds DOUBLE,
             room_type VARCHAR, minimum_nights INTEGER, review_scores_rating DOUBLE,
-            host_is_superhost BOOLEAN, number_of_reviews INTEGER
+            host_is_superhost BOOLEAN, number_of_reviews INTEGER,
+            name VARCHAR, description VARCHAR, amenities VARCHAR
         )
     """)
     con.execute("""
         INSERT INTO listings VALUES
-        (1, 41.14, -8.61, 100.0, 2, 1.0, 1.0, 'Entire home/apt', 2, 4.8, true, 50),
-        (2, 41.15, -8.62, 80.0,  1, 1.0, 1.0, 'Private room',    1, 4.5, false, 30)
+        (1, 41.14, -8.61, 100.0, 2, 1.0, 1.0, 'Entire home/apt', 2, 4.8, true,  50, 'Cozy apt', 'Nice place', '[]'),
+        (2, 41.15, -8.62, 80.0,  1, 1.0, 1.0, 'Private room',    1, 4.5, false, 30, 'Private room', NULL, '[]')
     """)
     con.execute("""
         CREATE TABLE listing_features (
@@ -72,12 +73,13 @@ def _make_artifacts(db_path):
     X_o, _, of = prepare_X_y_occupancy(df)
 
     price_model = MagicMock()
-    price_model.predict.return_value = np.log(np.full(len(df), 90.0))
+    price_model.predict.side_effect = lambda X: np.log(np.full(len(X), 90.0))
     occ_model = MagicMock()
-    occ_model.predict.return_value = np.full(len(df), 0.70)
+    occ_model.predict.side_effect = lambda X: np.full(len(X), 0.70)
 
-    price_artifact = {"model": price_model, "feature_names": list(pf)}
-    occ_artifact = {"model": occ_model, "feature_names": list(of)}
+    # Two groups: "Entire home/apt" and "other"
+    price_artifact = {"models": {"Entire home/apt": price_model, "other": price_model}, "feature_names": list(pf)}
+    occ_artifact = {"models": {"Entire home/apt": occ_model, "other": occ_model}, "feature_names": list(of)}
     return price_artifact, occ_artifact, df, pf, of
 
 
@@ -109,8 +111,7 @@ class TestRunPredictions:
              patch("geoai.models.predict._load_model", side_effect=fake_load_model), \
              patch("geoai.models.predict.shap_lib") as mock_shap:
 
-            shap_calls = [np.zeros((len(df), len(pf))), np.zeros((len(df), len(of)))]
-            mock_shap.TreeExplainer.return_value.shap_values.side_effect = shap_calls
+            mock_shap.TreeExplainer.return_value.shap_values.side_effect = lambda X: np.zeros((len(X), X.shape[1]))
             mock_shap.TreeExplainer.return_value.expected_value = 0.0
             mock_shap.sample.side_effect = lambda x, n: x[:n]
 
@@ -142,8 +143,7 @@ class TestRunPredictions:
              patch("geoai.models.predict._load_model", side_effect=fake_load_model), \
              patch("geoai.models.predict.shap_lib") as mock_shap:
 
-            shap_calls = [np.zeros((len(df), len(pf))), np.zeros((len(df), len(of)))]
-            mock_shap.TreeExplainer.return_value.shap_values.side_effect = shap_calls
+            mock_shap.TreeExplainer.return_value.shap_values.side_effect = lambda X: np.zeros((len(X), X.shape[1]))
             mock_shap.TreeExplainer.return_value.expected_value = 0.0
             mock_shap.sample.side_effect = lambda x, n: x[:n]
 
@@ -169,8 +169,7 @@ class TestRunPredictions:
              patch("geoai.models.predict._load_model", side_effect=fake_load_model), \
              patch("geoai.models.predict.shap_lib") as mock_shap:
 
-            shap_calls = [np.zeros((len(df), len(pf))), np.zeros((len(df), len(of)))]
-            mock_shap.TreeExplainer.return_value.shap_values.side_effect = shap_calls
+            mock_shap.TreeExplainer.return_value.shap_values.side_effect = lambda X: np.zeros((len(X), X.shape[1]))
             mock_shap.TreeExplainer.return_value.expected_value = 0.0
             mock_shap.sample.side_effect = lambda x, n: x[:n]
 

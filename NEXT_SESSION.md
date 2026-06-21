@@ -5,9 +5,13 @@
 - Expanded remaining groups + added 8 description keyword features
 - Price RMSE: 54.32 → 53.59 (-1.3%)
 
-## 2. Per-Room-Type Models (DEFERRED — user deprioritised)
-Currently one shared LightGBM for all room types. Occupancy MAE 0.164 vs target 0.15.
-See original notes if revisited.
+## 2. Per-Room-Type Models ✓ DONE
+- Two groups: "Entire home/apt" (dedicated model) + "other" (pooled Private/Hotel/Shared room)
+- Dropped `minimum_nights` from feature set
+- Price RMSE: EUR53.59 → EUR52.38 (weighted aggregate)
+- Occupancy MAE: 0.1643 → 0.1659 — still misses <0.15 target
+  - Entire home: 0.1669 | Other: 0.1603
+- Neighbourhood ranking table removed from analytics sidebar
 
 ## 3. Analytics Narratives ✓ DONE
 - Opportunity score per hex (frontend computed)
