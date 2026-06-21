@@ -218,6 +218,45 @@ geoai_airbnb/
 
 ---
 
+## Porting to Another City
+
+The pipeline is city-agnostic. Porto is the reference market; swapping it out requires data and four config changes — no code rewrites.
+
+**Prerequisites**
+- InsideAirbnb snapshot for the target city: `listings.csv.gz`, `calendar.csv.gz`, `reviews.csv.gz`, `neighbourhoods.geojson` — available at [insideairbnb.com/get-the-data](https://insideairbnb.com/get-the-data/)
+- The city must have reasonable OSM coverage (most European and major global cities qualify)
+
+**Changes required**
+
+| What | Where | Change |
+|------|-------|--------|
+| InsideAirbnb URLs | `src/geoai/config.py` | Replace `AIRBNB_PORTO_URL` and `CALENDAR_URL` with target city URLs |
+| OSM place name | `src/geoai/config.py` | Set `OSM_CITY = "Lisbon, Portugal"` (any string `osmnx` accepts) |
+| City center + landmarks | `src/geoai/config.py` | Replace `PORTO_CENTER_LAT/LON`, `PORTO_LANDMARKS`, `PORTO_AIRPORT` with city equivalents |
+| Ingestion script | `scripts/ingest_porto.py` | Copy to `ingest_<city>.py`; update file paths to point at new `data/raw/airbnb/` files |
+| Frontend viewport | `frontend/src/...` | Update initial map center lat/lon and zoom level |
+
+**Steps**
+
+```bash
+# 1. Place new city files in data/raw/airbnb/
+# 2. Update config.py constants above
+# 3. Re-run the full pipeline — models train from scratch on new data
+python scripts/ingest_<city>.py
+python -m geoai.features.runner
+python -m geoai.models.runner
+uvicorn geoai.api.main:app --reload --port 8000
+```
+
+All geospatial logic (H3 binning, Haversine proximity, OSM POI density) is coordinate-based and city-independent. ML models train fresh on each city's data — no transfer or fine-tuning needed. The only city-specific knowledge in the codebase is in `config.py`.
+
+**What won't transfer automatically**
+- Neighborhood boundary quality depends on InsideAirbnb's per-city GeoJSON; some cities have coarser granularity
+- Calendar-based occupancy features require at least one full year of calendar data for reliable estimates
+- Cities with fewer than ~5,000 active listings may produce noisier model outputs
+
+---
+
 ## Development Roadmap
 
 | Phase | Scope | Status |
@@ -229,9 +268,3 @@ geoai_airbnb/
 | 5 | FastAPI backend (predictions + SHAP API) | ✅ Complete |
 | 6 | React + Deck.gl frontend | 🔄 In Progress |
 | 7 | Causal inference + LLM analyst | ⏳ Planned |
-
----
-
-## Target Roles
-
-Applied AI Engineer · Data Scientist · Geospatial Data Scientist · ML Engineer · Analytics Engineer
